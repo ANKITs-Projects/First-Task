@@ -139,9 +139,9 @@ class UserServices {
     
     let query = { _id: { $nin: [] } }
 
-    if (visited && visited.cursorRange.length === 2) {
-      const newestSeen = new Date(visited.cursorRange[0])
-      const oldestSeen = new Date(visited.cursorRange[1])
+    if (visited && visited.timeRange.length === 2) {
+      const newestSeen = new Date(visited.timeRange[0])
+      const oldestSeen = new Date(visited.timeRange[1])
       query.$or = [
         { createdAt: { $lt: oldestSeen } },
         { createdAt: { $gt: newestSeen } }
@@ -165,7 +165,7 @@ class UserServices {
 
       await this.feedsVisited.findOneAndUpdate(
         { userId: userId },
-        { $set: { cursorRange: [startfeed, endfeed] } },
+        { $set: { timeRange: [startfeed, endfeed] } },
         { upsert: true }
       );
     }

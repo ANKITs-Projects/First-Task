@@ -8,7 +8,7 @@ const visitedFeedsSchema = new mongoose.Schema({
         require: true,
         index: true
     },
-    cursorRange:{
+    timeRange:{
         type: [String],
         required: true,
         validate: {

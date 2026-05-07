@@ -22,7 +22,7 @@ const userController = new UserController(userService)
 
 route.get('/feeds', AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("User"), getFeedsValidation, apiValidator, userController.getFeeds)
 
-route.post('/creapost', AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("User"), createPostValidaion, apiValidator, userController.createPost)
+route.post('/createpost', AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("User"), createPostValidaion, apiValidator, userController.createPost)
 
 route.get('/getallpost', AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("User"), userController.getAllMyPost)
 
