@@ -1,0 +1,3 @@
+{"level":"info","message":"Server started"}
+{"level":"error","message":"Something went wrong"}
+{"level":"info","message":"POST /login 200 467ms"}
