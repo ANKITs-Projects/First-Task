@@ -2,13 +2,13 @@ const { body } = require('express-validator')
 
 
 const signupValidation = [
-    body("email").isEmail().withMessage("Please enter a valid email"),,
-    body("name").isAlpha().withMessage("Name field must contain only string value.."),,
+    body("email").isEmail().withMessage("Please enter a valid email"),
+    body("name").isAlpha('en-US', {ignore: " "}).withMessage("Name field must contain only string value.."),
     body('password').isLength({min: 6}).withMessage("Password must contain minimum 6 character"),
 ]
 
 const loginValidation = [
-    body("email").isEmail().withMessage("Please enter a valid email"),,
+    body("email").isEmail().withMessage("Please enter a valid email"),
     body('password').notEmpty().withMessage("Please enter the password"),
 ]
 
