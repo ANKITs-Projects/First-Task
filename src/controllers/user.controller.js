@@ -145,6 +145,34 @@ class UserController {
             next(error)
         }
     }
+
+    setCategory = async (req, res, next) => {
+        try {
+            const result = await this.userService.setCategory(req.body, req.userid)
+
+            res.status(201).json({
+                success: true,
+                message: "Category Set Successfully",
+                data: result
+            })
+        } catch (error) {
+            next(error)         
+        }
+    }
+
+    updateCategory = async (req, res, next) => {
+        try {
+            const result = await this.userService.updateCategory(req.body, req.userid)
+
+            res.status(201).json({
+                success: true,
+                message: "Category updated Successfully",
+                data: result
+            })
+        } catch (error) {
+            next(error)         
+        }
+    }
 }
 
 module.exports = UserController

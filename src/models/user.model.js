@@ -21,6 +21,10 @@ const userSchema = new mongoose.Schema(
       enum: ["SuperAdmin", "Admin", "User"],
       default: "User"
     },
+    categories: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "FeedCategory"
+    },
     refreshToken: {
       type: String,
       select: false
