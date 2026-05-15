@@ -40,7 +40,7 @@ const postSchema = new mongoose.Schema(
     },
     postCategory: {
         type: [String],
-        default: "General",
+        default: ["General"],
         validate: {
             validator: validateCategory,
             message: 'Post contains invalid category'

@@ -8,12 +8,10 @@ const postVisitedSchema = new mongoose.Schema({
         require: true
     },
     postId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: [mongoose.Schema.Types.ObjectId],
         ref: 'UserPost',
-        require: true,
-        index: true
+        require: true
     }
-
 }, {timestamps: true})
 
 module.exports = mongoose.model("PostVisited", postVisitedSchema);

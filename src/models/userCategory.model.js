@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const categoryArray = require('../helper/categorydata');
+const {category} = require('../helper/categorydata');
 
 const validateCategory = (categories) => {
     return categories.every(category => categoryArray[category])
@@ -7,19 +7,20 @@ const validateCategory = (categories) => {
 
 
 const validateSubCategory = function(subCategories) {
+  const categories = this.category
 
-    const categories = this.feedCategory
-    for (const sub of subCategories) {
+  if (!Array.isArray(categories) || !Array.isArray(subCategories)) {
+    return false
+  }
 
-        const valid = categories.some(category =>
-            sub.includes(category)
-        )
-        if (!valid) {
-            return false
-        }
-    }
-    return true
-};
+  const allowedSubs = categories.flatMap(
+    category => categoryArray[category] || []
+  )
+
+  return subCategories.every(sub =>
+    allowedSubs.includes(sub)
+  )
+}
 
 
 const categorySchema = new mongoose.Schema({
@@ -32,7 +33,7 @@ const categorySchema = new mongoose.Schema({
         type: [String],
         validate: {
             validator: validateCategory,
-            message: 'contains invalid category'
+            message: 'It contains invalid category'
         }
     },
     subCategory: {
@@ -46,4 +47,4 @@ const categorySchema = new mongoose.Schema({
 }, { timestamps: true })
 
 
-module.exports = mongoose.model('FeedCategory', categorySchema)
+module.exports = mongoose.model('UserCategory', categorySchema)

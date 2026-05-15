@@ -22,7 +22,7 @@ const verifyRefreshToken = async (reftoken) => {
 
       return newToken
     } catch (error) {
-        throw new Error(error.message)
+        throw error
     }
 }
 

@@ -177,5 +177,4 @@ const mainCategorys = [
   "General"
 ];
 
-module.exports = {mainCategorys}
-module.exports = category;
+module.exports = {mainCategorys, category}

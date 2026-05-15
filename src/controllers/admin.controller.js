@@ -1,4 +1,4 @@
-
+const apiResponce = require('./../utils/responceObj')
 
 class AdminController {
     constructor(adminService){
@@ -12,12 +12,9 @@ class AdminController {
             res.cookie("authToken", req.token, {
                 maxAge: 5 * 60 * 60 * 1000
             })
-            res.status(201).json({
-                success: true,
-                message: "User fetched successfully",
-                token: req.token,
-                data
-            })
+            res.status(200).json(
+                apiResponce(data, "User fetched successfully")
+            )
         } catch (error) {
             next(error)
         }
@@ -33,11 +30,9 @@ class AdminController {
             res.cookie("authToken", req.token, {
                 maxAge: 5 * 60 * 60 * 1000
             })
-            res.status(200).json({
-                success: true,
-                message: "User deletaed successfully",
-                token: req.token,
-            })
+            res.status(200).json(
+                apiResponce(null, "User deletaed successfully")
+                )
         } catch (error) {
             next(error)
         }

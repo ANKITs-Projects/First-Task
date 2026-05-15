@@ -13,10 +13,11 @@ const visitedFeedsSchema = new mongoose.Schema({
         required: true,
         validate: {
             validator: function(v) {
-                return v.length === 2;
+                return v.length === 2
             }
         }
-    }
+    },
+    
 
 }, {timestamps: true})
 
