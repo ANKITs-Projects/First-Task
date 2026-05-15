@@ -39,7 +39,6 @@ route.get('/getsharedpost/:postid', AuthMiddleware.verifyToken, RoleMiddleware.a
 
 route.get('/getallpostbyuserid/:userid', AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("user"), userIdValidation, apiValidator, userController.getAllPostByUserId)
 
-route.get('/feeds', AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("user"), getFeedsValidation, apiValidator, userController.getFeeds)
 
 route.post('/createcommunity', AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("user"), upload.fields([{name: "avatar", maxCount:1}, {name: "banner", maxCount:1}]), userController.createCommunity)
 
@@ -47,7 +46,7 @@ route.get('/joincommunity/:communityid', AuthMiddleware.verifyToken, RoleMiddlew
 route.post('/acceptreqforjoincommunity', AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("user"), userController.acceptReq)
 
 
-
+route.get('/feeds', AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("user"), getFeedsValidation, apiValidator, userController.getFeeds)
 
 
 

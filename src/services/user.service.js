@@ -164,7 +164,7 @@ class UserServices {
     }
   }
 
-  async makeComment(userid, postid, parrnetCommentId, comment) {
+  async makeComment(userid, postid, parentCommentId, comment) {
     try {
      
       const post = await pool.query(
@@ -182,7 +182,7 @@ class UserServices {
         VALUES($1, $2, $3, $4)
         RETURNING id
         `,
-        [postid, userid, parrnetCommentId, comment],
+        [postid, userid, parentCommentId, comment],
       );
 
       await pool.query(

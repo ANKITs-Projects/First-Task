@@ -17,7 +17,7 @@ const authController = new AuthController(authService)
 route.post('/signup', upload.fields([{name: "avatar", maxCount:1}, {name: "banner", maxCount:1}]), signupValidation, apiValidator, authController.signup)
 route.post('/login', loginValidation, apiValidator, authController.login)
 
-route.post('/send-email-verification', AuthMiddleware.verifyToken, authController.sendEmailVerification)
+route.get('/send-email-verification', AuthMiddleware.verifyToken, authController.sendEmailVerification)
 route.get('/verify-email/:token', authController.verifyemail)
 
 route.post('/forgetPassword', authController.forgetPassword)
