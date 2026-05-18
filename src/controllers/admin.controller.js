@@ -7,13 +7,14 @@ class AdminController {
     
     getAllUsers = async (req, res, next) => {
         try {
-            const data = await this.adminService.getAllUsers()
+            const {cursor} = req.query
+            const {users, cursor} = await this.adminService.getAllUsers(cursor)
 
             res.cookie("authToken", req.token, {
                 maxAge: 5 * 60 * 60 * 1000
             })
             res.status(200).json(
-                apiResponce(data, "User fetched successfully")
+                apiResponce({users, cursor}, "User fetched successfully")
             )
         } catch (error) {
             next(error)

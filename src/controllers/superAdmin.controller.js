@@ -7,10 +7,10 @@ class SuperAdminController{
 
     createAdmin = async (req, res, next) => {
         try {
-            const user = await this.superAdminService.createAdmin(req.body)
+            const admin = await this.superAdminService.createAdmin(req.body)
 
             res.status(201).json(
-                apiResponce(user, "Admin created successfully!")
+                apiResponce({admin}, "Admin created successfully!")
             )
         } catch (error) {
             next(error)
