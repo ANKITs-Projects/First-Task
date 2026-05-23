@@ -1,6 +1,7 @@
 const apiResponce = require('./../utils/responceObj')
 
 class AdminController {
+    
     constructor(adminService){
         this.adminService = adminService
     }
@@ -8,13 +9,14 @@ class AdminController {
     getAllUsers = async (req, res, next) => {
         try {
             const {cursor} = req.query
-            const {users, cursor} = await this.adminService.getAllUsers(cursor)
+            
+            const {users, newCursor} = await this.adminService.getAllUsers(cursor)
 
             res.cookie("authToken", req.token, {
                 maxAge: 5 * 60 * 60 * 1000
             })
             res.status(200).json(
-                apiResponce({users, cursor}, "User fetched successfully")
+                apiResponce({users, cursor: newCursor}, "User fetched successfully")
             )
         } catch (error) {
             next(error)

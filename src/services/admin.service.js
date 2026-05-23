@@ -2,27 +2,27 @@ const pool = require('../config/pgdb');
 const createError = require('../utils/errorObjGenerater')
 
 class AdminServices {
-  constructor(userModel, postModel, commentsModel, likeModel) {
-    this.userModel = userModel;
-    this.postModel = postModel;
-    this.commentsModel = commentsModel;
-    this.likeModel = likeModel;
-  }
-
+  constructor(){}
+  
   async getAllUsers(cursor) {
     try {
-      const q = cursor ? `id > ${cursor} AND` : ''
-      // const users = await this.userModel.find({ role: "User" })
+      const q = cursor ? `id > '${cursor}' AND` : '';
+
       const users = await pool.query(
         `
-        SELECT * FROM users
+        SELECT name, username, email, role, id, created_at FROM users
         WHERE 
         ${q}
         role = $1
         `,
         ['user']
       )
-      return {users: users.rows, cursor: users.rows[users.rows.length - 1].id}
+
+      if(users.rows.length == 0){
+        throw createError("No More Users..", 400)
+      }
+
+      return {users: users.rows, newCursor: users.rows[users.rows.length - 1].id}
     } catch (error) {
       throw error
     }
@@ -30,7 +30,7 @@ class AdminServices {
 
   async deleteUser(userId) {
     try {
-      // const targetUser = await this.userModel.findById(userId);
+      
       const targetUser = await pool.query(
         `
         SELECT id FROM users
@@ -38,6 +38,7 @@ class AdminServices {
         `,
         [userId]
       )
+      
       if (!targetUser.rows.length) {
         throw createError("User not found!", 400)
       }
@@ -46,7 +47,6 @@ class AdminServices {
         throw createError("Admin accounts cannot be deleted.", 400)
       }
 
-      // await this.userModel.deleteOne({ _id: userId });
 
       await pool.query(
         `

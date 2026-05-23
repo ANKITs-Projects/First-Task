@@ -3,9 +3,7 @@ const createError = require('../utils/errorObjGenerater');
 const pool = require("../config/pgdb");
 
 class SuperAdminService {
-    constructor(userModel){
-        this.userModel = userModel
-    }
+    constructor(){}
 
     async createAdmin(data) {
         try {
@@ -26,7 +24,7 @@ class SuperAdminService {
 
             const newAdmin = await pool.query(
                 `
-                INSET INTO users (name, username, email, password_hash, role) 
+                INSERT INTO users (name, username, email, password_hash, role) 
                 VALUES ($1, $2, $3, $4, $5)
                 RETURNING *    
                 `,

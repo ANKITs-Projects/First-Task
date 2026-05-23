@@ -7,9 +7,9 @@ class AuthController {
 
   signup = async (req, res, next) => {
     try {
-
-      const avatar = req.files?.avatar?.[0]?.path || null;
-      const banner = req.files?.banner?.[0]?.path || null;
+      
+      const avatar = req.files?.avatar?.path || null;
+      const banner = req.files?.banner?.path || null;
 
       const data = {
         ...req.body,
@@ -42,6 +42,19 @@ class AuthController {
       next(error);
     }
   };
+
+  profile = async (req, res, next) => {
+    try {
+      const userId = req.userid
+      const user = await this.authService.profile(userId)
+      
+      res.status(200).json(
+        apiResponce({user}, "User profile fetched successfully!!")
+      )
+    } catch (error) {
+      next(error)
+    }
+  }
 
   sendEmailVerification = async (req, res, next) => {
     try {
@@ -86,7 +99,7 @@ class AuthController {
       res.status(200).json({
         success: true,
         message: "verified successfully",
-        redirect_to_url: `/change-password/:token=${token}`,
+        redirect_to_url: `http://localhost:8000/api/auth/change-password/${token}`,
       });
     } catch (error) {
       next(errer);

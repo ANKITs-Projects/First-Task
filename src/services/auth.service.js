@@ -91,6 +91,26 @@ class AuthServices {
     }
   }
 
+  async profile(userId) {
+    try{
+      const user = await pool.query(
+        `
+        SELECT name, username, email, avatar_url, banner_url, role, followers_count, following_count, is_verified
+        FROM users
+        WHERE id = $1  
+        `,
+        [userId]
+      )
+
+      if(user.rows.length == 0)
+        throw createError("user not exist..", 400)
+
+      return user.rows[0]
+    }catch(error){
+      throw error
+    }
+  }
+
   async sendEmailVerification(userId) {
     try {
       // const user = await this.userModel.findById(userId)

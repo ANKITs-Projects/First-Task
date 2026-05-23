@@ -26,7 +26,8 @@ route.post("/setcategory", AuthMiddleware.verifyToken, RoleMiddleware.authorizeR
 
 route.patch("/updatecategory", AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("user"), userController.updateCategory)
 
-route.post('/createpost', AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("user"), upload.fields([{name: "media_urls", maxCount: 5}]) , userController.createPost)
+// route.post('/createpost', AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("user"), upload.fields([{name: "media_urls", maxCount: 5}]) , userController.createPost)
+route.post('/createpost', AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("user"), userController.createPost)
 
 route.post('/makecomment/:postid', AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("user"), commentsValidaion, apiValidator, userController.makeComment)
 route.get('/getcomments/:postid', AuthMiddleware.verifyToken, RoleMiddleware.authorizeRoles("user"), userController.getComment)

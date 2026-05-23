@@ -35,12 +35,8 @@ class UserController {
 
   createPost = async (req, res, next) => {
     try {
-
-      const mediaFiles = req.files?.media_urls || [];
-
-      const media_urls = mediaFiles.map(
-      (file) => file.path
-      );
+      
+      const media_urls = req.files ? Object.values(req.files).map(item => item.path) : [];
 
       const data = {
       ...req.body,
