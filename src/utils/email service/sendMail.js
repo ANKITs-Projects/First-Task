@@ -6,7 +6,7 @@ const sendmail = async(email, html) => {
         await transporter.sendMail({
          from: process.env.EMAIL,
          to: email,
-         subject: "Verify Your Email",
+         subject: "Email from social-app",
          html
       })
     } catch (error) {

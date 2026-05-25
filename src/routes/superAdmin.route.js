@@ -1,9 +1,9 @@
 const route = require('express').Router()
 
-// const userModel = require('../models/user.model')
 
 const SuperAdminService = require('../services/superAdmin.service')
 const SuperAdminController = require('../controllers/superAdmin.controller')
+
 const AuthMiddleware = require('../middlewares/auth.middleware')
 const RoleMiddleware = require('../middlewares/authorized.middleware')
 

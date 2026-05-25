@@ -1,5 +1,6 @@
-const userModel = require("../models/user.model")
 const TokenGenerator = require("./token.generator")
+
+const pool = require('../config/pgdb')
 
 const verifyRefreshToken = async (reftoken) => {
     try {
@@ -7,11 +8,17 @@ const verifyRefreshToken = async (reftoken) => {
 
         const {userId} = verifytoken
         
-        const user = await userModel.findById(userId).select('+refreshToken')
+        const user = await pool.query(
+            `
+            SELECT refresh_token FROM users
+            WHERE id = $1
+            `,
+            [userId]
+        )
 
-        if(!user) throw new Error("user not found..")
+        if(!user.rows.length) throw new Error("user not found..")
 
-        if(user.refreshToken !== reftoken){
+        if(user.rows[0].refresh_token !== reftoken){
             throw new Error("Invalid token")
         }
 

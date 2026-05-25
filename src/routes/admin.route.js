@@ -2,11 +2,6 @@ const route = require('express').Router()
 
 const apiValidator = require('./../middlewares/apiValidator.middleware')
 
-// const postModel = require('./../models/post.model')
-// const commentsModel = require('./../models/comments.model')
-// const userModel = require('./../models/user.model')
-// const likeModel = require('./../models/postLike.model')
-
 
 const AdminServices = require('./../services/admin.service')
 const AdminController = require('./../controllers/admin.controller')

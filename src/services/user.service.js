@@ -1,30 +1,10 @@
 const TokenGenerator = require("../utils/token.generator");
 const createError = require("../utils/errorObjGenerater");
 const { uploadOnCloudinary } = require("../utils/cloudinary");
-const postLikeModel = require("../models/postLike.model");
 const pool = require("../config/pgdb");
-const { create } = require("../models/post.model");
 
 class UserServices {
-  constructor(
-    userModel,
-    postModel,
-    commentsModel,
-    postLike,
-    postVisited,
-    feedsVisited,
-    userCategory,
-    userFeedCategory,
-  ) {
-    this.userModel = userModel;
-    this.postModel = postModel;
-    this.commentsModel = commentsModel;
-    this.postLike = postLike;
-    this.postVisited = postVisited;
-    this.feedsVisited = feedsVisited;
-    this.userCategory = userCategory;
-    this.userFeedCategory = userFeedCategory;
-  }
+  constructor(){}
 
   async updateUsersFeedCategory(category, userid) {
     try {
@@ -526,8 +506,8 @@ class UserServices {
     try {
       const postLimit = process.env.POST_LIMIT;
 
-      const query = cursor ? `user_id = 'id < '${cursor}' AND` :  ``;
-
+      const query = cursor ? `id < '${cursor}' AND` :  ``;
+      
       const posts = await pool.query(
         `SELECT * FROM posts 
           WHERE 
@@ -648,7 +628,7 @@ class UserServices {
     try {
       const postLimit = process.env.POST_LIMIT;
 
-      const query = cursor ? `user_id = 'id < '${cursor}' AND` :  ``;
+      const query = cursor ? `id < '${cursor}' AND` :  ``;
 
       const posts = await pool.query(
         `SELECT * FROM posts 
@@ -680,6 +660,18 @@ class UserServices {
     try {
       const { community_name, description, category, avatar, banner, privacy } =
         data;
+
+      const communityExist = await pool.query(
+        `
+        SELECT * FROM communities
+        WHERE community_name = $1
+        `,
+        [community_name]
+      )
+
+      if(communityExist.rows.length) {
+        throw createError("Community with same name already exist..", 400)
+      }
 
       const avatar_url = avatar ? await uploadOnCloudinary(avatar) : null;
       const banner_url = banner ? await uploadOnCloudinary(banner) : null;
@@ -867,6 +859,27 @@ class UserServices {
       };
     } catch (error) {
       throw error;
+    }
+  }
+
+  async notification(userId) {
+    try {
+      const notification = await pool.query(
+        `
+        SELECT * FROM notification
+        WHERE receiver_id = $1
+        ORDER BY created_at DESC
+        `,
+        [userId]
+      )
+
+      if(notification.rows.length == 0)
+        throw createError("There is no notification..", 200)
+
+      return notification.rows
+
+    } catch (error) {
+      throw error
     }
   }
 
@@ -1279,15 +1292,14 @@ class UserServices {
       const feed_category = category.rows[0].feed_category;
 
       const query = `
-        WHERE id <> ALL($1)
+        id <> ALL($2)
         AND
-        post_category && $2
+        post_category && $3
       `;
 
       let feed = await pool.query(
         `SELECT * FROM posts
-        status = $1
-        AND
+        WHERE status = $1 AND
         ${query}
           ORDER BY created_at DESC
           LIMIT $4

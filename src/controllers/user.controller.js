@@ -266,8 +266,10 @@ class UserController {
     try {
       const userId = req.userid
 
-      const avatar = req.files?.avatar?.[0]?.path || null;
-      const banner = req.files?.banner?.[0]?.path || null;
+
+
+      const avatar = req.files?.avatar?.path || null;
+      const banner = req.files?.banner?.path || null;
 
       const data = {
         ...req.body,
@@ -312,6 +314,18 @@ class UserController {
 
       res.status(200).json(
         apiResponce(data, message)
+      )
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  notification = async (req, res, next) => {
+    try {
+      const notification = await this.userService.notification(req.userid)
+
+      res.status(200).json(
+        apiResponce({notification}, "Notification fetched successfully...")
       )
     } catch (error) {
       next(error)

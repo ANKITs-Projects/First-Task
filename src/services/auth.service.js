@@ -7,15 +7,12 @@ const { uploadOnCloudinary } = require("../utils/cloudinary");
 
 
 class AuthServices {
-  constructor(userModel) {
-    this.userModel = userModel;
-  }
+  constructor() {}
 
   async signUp(data) {
     try {
       const { name, username, email, password, avatar, banner } = data;
 
-      // const user = await this.userModel.findOne({ email });
 
       const user = await pool.query(
         `SELECT * FROM users WHERE email = $1`,
@@ -40,9 +37,6 @@ class AuthServices {
         [name, username, email, hashedPassword, avatar_url, banner_url]
       )
 
-      // const userObj = newUser.toObject()
-      // delete userObj.password
-
       return newUser.rows[0]
     } catch (error) {
       throw error
@@ -53,7 +47,6 @@ class AuthServices {
     try {
       const { email, password } = data;
 
-      // const user = await this.userModel.findOne({ email }).select('+password')
 
       const user = await pool.query(
         'SELECT username, id, password_hash, role FROM users WHERE email=$1',
@@ -76,7 +69,6 @@ class AuthServices {
         userId: id
       }, process.env.REFRESH_TOKEN_EXPIRESIN, process.env.REFRESH_TOKEN_SECRET_KEY)
 
-      // user.refreshToken = refreshToken
       
       await pool.query(
         'UPDATE users SET refresh_token = $1 WHERE id = $2',
@@ -113,7 +105,6 @@ class AuthServices {
 
   async sendEmailVerification(userId) {
     try {
-      // const user = await this.userModel.findById(userId)
 
       const user = await pool.query(
         'SELECT email, is_verified FROM users WHERE id = $1',
@@ -130,7 +121,6 @@ class AuthServices {
 
       const token = TokenGenerator.generateToke({userId: userId}, process.env.VERIFY_TOKEN_EXPIRESIN, process.env.VERIFY_TOKEN_SECRET_KEY)
 
-      // user.emailVerificationToken = token
       await pool.query(
         'UPDATE users SET email_verification_token = $1 WHERE id = $2',
         [token, userId]
@@ -155,7 +145,6 @@ class AuthServices {
   async verifyemail(token) {
     try {
       const {userId} = TokenGenerator.decodeToken(token, process.env.VERIFY_TOKEN_SECRET_KEY)
-      // const user = await this.userModel.findById(userId).select("+emailVerificationToken")
 
       const user = await pool.query(
         'SELECT email_verification_token FROM users WHERE id=$1',
@@ -180,7 +169,6 @@ class AuthServices {
 
   async forgetPassword(mail) {
     try {
-      // const user = await this.userModel.findOne({email: mail}).select("+resetPasswordToken")
 
       const user = await pool.query(
         'SELECT id FROM users WHERE email=$1',
@@ -195,10 +183,6 @@ class AuthServices {
       const token = TokenGenerator.generateToke({userId: id}, process.env.VERIFY_TOKEN_EXPIRESIN, process.env.VERIFY_TOKEN_SECRET_KEY)
 
       
-      
-      // user.resetPasswordToken = token
-      // await user.save()
-
       await pool.query(
         'UPDATE users SET reset_password_token=$1 WHERE id=$2',
         [token, id]
@@ -225,7 +209,6 @@ class AuthServices {
     try {
       const {userId} = TokenGenerator.decodeToken(token, process.env.VERIFY_TOKEN_SECRET_KEY)
 
-      // const user = await this.userModel.findById(userId).select("+resetPasswordToken")
 
       const user = await pool.query(
         'SELECT reset_password_token FROM users WHERE id = $1',
@@ -243,7 +226,6 @@ class AuthServices {
   async changePassword(token, {password}) {
     try {
       const {userId} = TokenGenerator.decodeToken(token, process.env.VERIFY_TOKEN_SECRET_KEY)
-      // const user = await this.userModel.findById(userId).select("+resetPasswordToken +password")
 
       const user = await pool.query(
         'SELECT reset_password_token FROM users WHERE id = $1',
@@ -255,9 +237,6 @@ class AuthServices {
       
       const hashedPassword = await PasswordHashing.hashing(password);
       
-      // user.password = hashedPassword
-      // await user.save()
-
       await pool.query(
         'UPDATE users SET password_hash = $1, reset_password_token = $2 WHERE id = $3',
         [hashedPassword, null, userId]
