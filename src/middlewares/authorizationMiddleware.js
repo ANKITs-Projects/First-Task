@@ -1,4 +1,4 @@
-class RoleMiddleware {
+class AuthorizationMiddleware {
   static authorizeRoles(role) {
     return (req, res, next) => {
       if (role != (req.role)) {
@@ -13,4 +13,4 @@ class RoleMiddleware {
 }
 
 
-module.exports = RoleMiddleware
+module.exports = AuthorizationMiddleware

@@ -1,70 +1,34 @@
 const TokenGenerator = require("../utils/token.generator");
 const createError = require("../utils/errorObjGenerater");
-const { uploadOnCloudinary } = require("../utils/cloudinary");
+const { uploadOnCloudinary } = require("../config/cloudinary");
 const pool = require("../config/pgdb");
+const { getUsersCategoryByUserId, createNewUsersCategory, updateUsersCategory } = require("../repositories/usersCategoryRepositories");
+const { updateOrCreateUsersFeedCategory } = require("../repositories/usersFeedCatecoryRepositories");
+const { getCommunityById } = require("../repositories/communitiesRepositories");
+const { getCommunityMemberByUserId } = require("../repositories/communityMembers");
+const { createNewPost, getPostByPostId, updatePostRepository, getPosts } = require("../repositories/postsRepositories");
+const { createComment, getCommentRepository } = require("../repositories/commentsRepositories");
+const { createOrUpdatePostVisitedByUser } = require("../repositories/postVisitedbyUserRepositories");
+const { toggleLikeRepository } = require("../repositories/likesRepositories");
+const { followRepository, getFollowersRepository, getFollowingRepository } = require("../repositories/followersRepositories");
+const { getUserByUserId, updateUser } = require("../repositories/usersRepositories");
 
 class UserServices {
   constructor(){}
 
-  async updateUsersFeedCategory(category, userid) {
+  async setCategory(category, userid) {
     try {
-      await pool.query(
-        `INSERT INTO users_feed_category (user_id, feed_category)
-          VALUES ($2, $1::text[])
-   
-          ON CONFLICT (user_id)
-          DO UPDATE SET feed_category = ARRAY(
-              SELECT DISTINCT unnest(
-                COALESCE(users_feed_category.feed_category, '{}')
-                || EXCLUDED.feed_category
-              )
-          )
-          
-          RETURNING *
-        `,
-        [category, userid],
-      );
-    } catch (error) {
-      throw error;
-    }
-  }
+      const select = 'category'
+      const userCategory = await getUsersCategoryByUserId(userid, select)
 
-  async updateUsersVisitedFeed(postid, userid) {
-    try {
-      await pool.query(
-        `INSERT INTO post_visited_by_user (user_id, post_id)
-          VALUES ($1, $2)
-   
-          ON CONFLICT (user_id, post_id)
-          DO NOTHING
-        `,
-        [userid, postid],
-      );
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  async setCategory(data, userid) {
-    try {
-      const { category } = data;
-
-      const userCategory = await pool.query(
-        "SELECT * FROM users_category WHERE user_id = $1",
-        [userid],
-      );
-
-      if (userCategory.rows.length > 0)
+      if (userCategory)
         throw createError("User's Category already exist", 400);
 
-      const res = await pool.query(
-        "INSERT INTO users_category (user_id, category) VALUES ($1, $2) RETURNING *",
-        [userid, category],
-      );
+      const newUsersCategory = await createNewUsersCategory(userid, category)
 
-      await this.updateUsersFeedCategory(category, userid);
+      await updateOrCreateUsersFeedCategory(userid, category);
 
-      return res.rows[0];
+      return newUsersCategory;
     } catch (error) {
       throw error;
     }
@@ -74,24 +38,11 @@ class UserServices {
     try {
       const { category } = data;
 
-      const result = await pool.query(
-        `INSERT INTO users_category (user_id, category) 
-            VALUES ($2, $1::TEXt[])
-            
-            ON CONFLICT (user_id)
-            DO UPDATE SET category = ARRAY( 
-            SELECT DISTINCT unnest( 
-            COALESCE(users_category.category, '{}')
-            || EXCLUDED.category
-            )
-          ) 
-        RETURNING *`,
-        [category, userid],
-      );
+      const result = await updateUsersCategory(userid, category)
 
-      await this.updateUsersFeedCategory(category, userid);
+      await updateOrCreateUsersFeedCategory(userid, category);
 
-      return result.rows[0];
+      return result;
     } catch (error) {
       throw error;
     }
@@ -112,31 +63,17 @@ class UserServices {
 
 
       if (community_id) {
-        const community = await pool.query(
-          `
-          SELECT id FROM communities 
-          WHERE id = $1
-          `,
-          [community_id],
-        );
-        if (community.rows.length === 0)
+        const community = await getCommunityById(community_id, 'id')
+        if (!community)
           throw createError("Community not exist..", 400);
 
-        const member = await pool.query(
-          `
-          SELECT * FROM community_members
-          WHERE user_id = $1 AND community_id = $2 
-          `,
-          [userId, community_id],
-        );
-        if (!member.rows.length)
+        const member = await getCommunityMemberByUserId(userId, community_id)
+
+        if (!member)
           throw createError("You are not the member of this community", 400);
 
-        if (!member.rows[0].can_post)
-          throw createError(
-            "You are not allowed to post in this community",
-            400,
-          );
+        if (!member.can_post)
+          throw createError("You are not allowed to post in this community", 400);
       }
 
       if (typeof post_category === "string") {
@@ -153,13 +90,9 @@ class UserServices {
         }),
       );
 
-      const newPost = await pool.query(
-        `
-        INSERT INTO posts (user_id, community_id, title, content, tags, media_urls, post_type, post_category, status)
-          VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
-          RETURNING *
-          `,
-        [
+      const fields = 'user_id, community_id, title, content, tags, media_urls, post_type, post_category, status'
+      const valueNotation = '$1, $2, $3, $4, $5, $6, $7, $8, $9'
+      const values = [
           userId,
           community_id,
           title,
@@ -169,12 +102,14 @@ class UserServices {
           post_type,
           post_category,
           status
-        ],
-      );
+        ]
+      
+      const newPost = await createNewPost(fields, valueNotation, values)
 
-      await this.updateUsersFeedCategory(post_category, userId);
+      await updateOrCreateUsersFeedCategory(userId, post_category);
 
-      return newPost.rows[0];
+
+      return newPost;
     } catch (error) {
       throw error;
     }
@@ -182,40 +117,25 @@ class UserServices {
 
   async updatePost(data, postId, userId) {
     try {
+      const select = 'title, content, tags, post_category'
+      const postData = await getPostByPostId(postId, select)
 
-      const postData = await pool.query(
-        `
-        SELECT title, content, tags, post_category
-        FROM posts
-        WHERE 
-        id = $1
-        AND 
-        user_id = $2
-        `,
-        [postId, userId]
-      )
-
-      if(postData.rows.length === 0)
+      if(!postData)
         throw createError('Post not found', 400)
 
 
-      const oldData = post.rows[0]
+      let { title = postData.title,
+         content= postData.content,
+          tags = postData.tags, 
+          post_category = postData.post_category,} = data;
 
-      let { title = oldData.title,
-         content= oldData.content,
-          tags = oldData.tags, 
-          post_category = oldData.post_category,} = data;
+      const fields = 'title = $1, content = $2, tags = $3, post_category = $4'
+      const condition = 'id = $5 AND user_id = $6'
+      const values = [title, content, tags, post_category, postId, userId]
 
-      const post = await pool.query(
-        `
-        UPDATE INTO posts 
-        SET (title, content, tags, post_category)
-        VALUES ($1, $2, $3, $4)
-        `,
-        [title, content, tags, post_category]
-      )
+      const post = await updatePostRepository(fields, condition, values)
 
-      return post.rows[0]
+      return post
     } catch (error) {
       throw error
     }
@@ -223,37 +143,22 @@ class UserServices {
 
   async publishDraftPost(postId, userId) {
     try {
-      const postData = await pool.query(
-        `
-        SELECT status
-        FROM posts
-        WHERE 
-        id = $1
-        AND 
-        user_id = $2
-        `,
-        [postId, userId]
-      )
+      
+      const select = 'status'
+      const postData = await getPostByPostId(postId, select)
 
-      if(postData.rows.length === 0)
+      if(!postData)
         throw createError('Post not found', 400)
 
-      if(postData.rows[0].status == 'publish')
+      if(postData.status === 'publish')
         throw createError('Post already published', 400)
 
-      const post = await pool.query(
-        `
-        UPDATE posts
-        SET status = $3
-         WHERE 
-        id = $1
-        AND 
-        user_id = $2
-        RETURNING *
-        `,
-        [postId, userId, 'publish']
-      )
-      return post.rows[0]
+      const fields = 'status = $1'
+      const condition = 'id = $2 AND user_id = $3'
+      const values = ['publish', postId, userId]
+
+      const post = await updatePostRepository(fields, condition, values)
+      return post
     } catch (error) {
       throw error
     }
@@ -261,40 +166,28 @@ class UserServices {
 
   async makeComment(userid, postid, parentCommentId, comment) {
     try {
-      const post = await pool.query(
-        `
-        SELECT post_category, status FROM posts 
-        WHERE id = $1 
-        AND status = 'publish'
-        `,
-        [postid],
-      );
+      const select = 'post_category, status'
+      const post = await getPostByPostId(postid, select)
 
-      if (!post.rows.length) throw createError("Post is not found!!", 404);
+      if (!post) throw createError("Post is not found!!", 404);
 
-      const newComment = await pool.query(
-        `
-        INSERT INTO comments (post_id, user_id, parent_comment_id, comment)
-        VALUES($1, $2, $3, $4)
-        RETURNING id
-        `,
-        [postid, userid, parentCommentId, comment],
-      );
+      const fields = 'post_id, user_id, parent_comment_id, comment'
+      const valueNotation = '$1, $2, $3, $4'
+      const values = [postid, userid, parentCommentId, comment]
+      
+      const newComment = await createComment(fields, valueNotation, values)
 
-      await pool.query(
-        `
-        UPDATE posts SET comments_count = comments_count + 1
-        WHERE id = $1
-        `,
-        [postid],
-      );
+      const postField = 'comments_count = comments_count + 1'
+      const postCondition = 'id = $1'
+      const postValues = [postid]
+      await updatePostRepository(postField, postCondition, postValues)
 
-      const category = post.rows[0].post_category;
-      await this.updateUsersFeedCategory(category, userid);
+      const category = post.post_category;
+      await updateOrCreateUsersFeedCategory(userid, category);
 
-      await this.updateUsersVisitedFeed(postid, userid);
+      await createOrUpdatePostVisitedByUser(postid, userid);
 
-      return newComment.rows[0];
+      return newComment;
     } catch (error) {
       throw error;
     }
@@ -302,108 +195,32 @@ class UserServices {
 
   async getComment(postId) {
     try {
+      const select = 'post_category'
+      const post = await getPostByPostId(postId, select)
 
-
-      const post = await pool.query(
-        `
-        SELECT post_category FROM posts 
-          WHERE id = $1
-        AND status = 'publish'
-        `,
-        [postId]
-      )
-      if(post.rows.length == 0)
+      if(!post)
         throw createError("Post not exist", 400)
 
+      const comments = await getCommentRepository(postId)
 
-      const comments = await pool.query(
-        `
-        WITH RECURSIVE comment_tree AS (
-
-        SELECT
-            id,
-            post_id,
-            user_id,
-            parent_comment_id,
-            comment,
-            created_at,
-            0 AS depth,
-            ARRAY[id] AS path
-        FROM comments
-        WHERE
-        parent_comment_id IS NULL
-          AND post_id = $1
-
-        UNION ALL
-
-              SELECT
-                  c.id,
-                  c.post_id,
-                  c.user_id,
-                  c.parent_comment_id,
-                  c.comment,
-                  c.created_at,
-                  ct.depth + 1,
-                  ct.path || c.id
-              FROM comments c
-              JOIN comment_tree ct
-                  ON c.parent_comment_id = ct.id
-          )
-
-          SELECT
-              id,
-              user_id,
-              parent_comment_id,
-              comment,
-              created_at,
-              depth,
-              path
-          FROM comment_tree
-          ORDER BY path;
-        `,
-        [postId]
-      );
-
-      if(comments.rows.length === 0)
-        throw createError("No comments", 400)
-
-      return {comments: comments.rows}
+      return comments
     } catch (error) {
       throw error;
     }
   }
 
-  async togeLike(postid, userId) {
+  async toggleLike(postid, userId) {
     try {
-      const isPostliked = await pool.query(
-        `
-        INSERT INTO likes (user_id, post_id)
-        VALUES ($1, $2)
+      const postliked = await toggleLikeRepository(userId, postid)
 
-        ON CONFLICT (user_id, post_id)
-        DO UPDATE SET isliked = NOT likes.isliked
+      const isliked = postliked.isliked;
 
-        RETURNING isliked
-        `,
-        [userId, postid],
-      );
+      const postField = `likes_count = likes_count ${isliked ? '+ 1' : '- 1'}`
+      const postCondition = 'id = $1'
+      const postValues = [postid]
+      await updatePostRepository(postField, postCondition, postValues)
 
-      const isliked = isPostliked.rows[0].isliked;
-
-      const post = await pool.query(
-        `
-        UPDATE posts
-        SET likes_count = likes_count ${isliked ? "+ 1" : "- 1"}
-        WHERE id = $1
-        RETURNING post_category
-        `,
-        [postid],
-      );
-
-      const category = post.rows[0].post_category;
-      await this.updateUsersFeedCategory(category, userId);
-
-      await this.updateUsersVisitedFeed(postid, userId);
+      await createOrUpdatePostVisitedByUser(postid, userId);
 
       return isliked ? "Post liked" : "Post unliked";
     } catch (error) {
@@ -413,49 +230,31 @@ class UserServices {
 
   async follow(userId, followingId) {
     try {
-      const user = await pool.query(
-        `
-        SELECT id FROM users
-        WHERE id = $1
-        `,
-        [followingId]
-      )
-      if(user.rows.length === 0)
+      const select = 'id'
+      const user = await getUserByUserId(followingId, select)
+      if(user.length === 0)
         throw createError("User not exist..", 400)
 
-      const follow = await pool.query(
-        `
-        INSERT INTO followers (following, follower)
-        VALUES ($1, $2)
-        ON CONFLICT (following, follower)
-        
-        DO UPDATE SET isfollowing = NOT followers.isfollowing
-        RETURNING isfollowing 
-        `,
-        [followingId, userId]
-      )
+      const follow = await followRepository(followingId, userId)
+      const isfollow = follow.isfollowing
 
-      const isfollow = follow.rows[0].isfollowing
+      const followersQuery = `
+                            UPDATE users
+                            SET followers_count = followers_count ${isfollow ? "+ 1" : "- 1"}
+                            WHERE id = $1
+                            `
+      const followervalues = [followingId]
+      await updateUser(followersQuery, followervalues)
 
-      await pool.query(
-        `
-        UPDATE users
-        SET followers_count = followers_count ${isfollow ? "+ 1" : "- 1"}
-        WHERE id = $1
-        `,
-        [followingId]
-      )
+      const followingQuery = `
+                              UPDATE users
+                              SET following_count = following_count ${isfollow ? "+ 1" : "- 1"}
+                              WHERE id = $1
+                              `
+      const followingvalues = [userId]
+      updateUser(followingQuery, followingvalues)
 
-      await pool.query(
-        `
-        UPDATE users
-        SET following_count = following_count ${isfollow ? "+ 1" : "- 1"}
-        WHERE id = $1
-        `,
-        [userId]
-      )
-
-      return follow.rows[0]
+      return follow
 
     } catch (error) {
       throw error
@@ -464,19 +263,9 @@ class UserServices {
 
   async getFollowers(userId) {
     try {
-      const follower = await pool.query(
-        `
-        SELECT * FROM followers
-        WHERE following = $1 
-        AND isfollowing = $2
-        `,
-        [userId, true]
-      )
+      const follower = await getFollowersRepository(userId)
 
-      if(follower.rows.length == 0)
-        throw createError("No followers", 400)
-
-      return follower.rows
+      return follower
     } catch (error) {
       throw error
     }
@@ -484,50 +273,39 @@ class UserServices {
 
   async getFollowing(userId) {
     try {
-      const follower = await pool.query(
-        `
-        SELECT * FROM followers
-        WHERE follower = $1 
-        AND isfollowing = $2
-        `,
-        [userId, true]
-      )
+      const following = await getFollowingRepository(userId)
 
-      if(follower.rows.length == 0)
-        throw createError("No followings", 400)
-
-      return follower.rows
+      return following
     } catch (error) {
       throw error
     }
   }
 
-  async getallMypost(userId, cursor) {
+  async getAllMyPosts(userId, cursor) {
     try {
       const postLimit = process.env.POST_LIMIT;
 
-      const query = cursor ? `id < '${cursor}' AND` :  ``;
-      
-      const posts = await pool.query(
-        `SELECT * FROM posts 
-          WHERE 
-          ${query}
-          user_id = $1
-          AND STATUS = $2
-          ORDER BY created_at DESC
-          LIMIT $3
-        `,
-        [userId, 'publish', postLimit]
-      );
+      const select = '*'
+      const condition = `${cursor ? 'id < $4 AND' : ''}
+                          user_id = $1 AND
+                          STATUS = $2
+                        `
+      const modifier = 'ORDER BY created_at DESC LIMIT $3'
+      const values = [userId, 'publish', postLimit]
+      if(cursor) values.push(cursor)
 
-      if (posts.rows.length === 0) {
-        const mes = cursor ? "No More Posts" : "There is no posts";
-        throw createError(mes, 200);
+      const posts = await getPosts(select, condition, modifier, values)
+
+      if (posts.length === 0) { 
+      return {
+        post: posts,
+        newCursor: null
+      };
       }
 
       return {
-        post: posts.rows,
-        newCursor: posts.rows[posts.rows.length - 1].id,
+        post: posts,
+        newCursor: posts[posts.length - 1].id
       };
     } catch (error) {
       throw error;
@@ -538,28 +316,25 @@ class UserServices {
     try {
       const postLimit = process.env.POST_LIMIT;
 
-      const query = cursor ? `user_id = 'id < '${cursor}' AND` :  ``;
+      const select = '*'
+      const condition = `${cursor ? 'id < $4 AND' : ''}
+                          user_id = $1 AND
+                          STATUS = $2
+                        `
+      const modifier = 'ORDER BY created_at DESC LIMIT $3'
+      const values = [userId, 'draft', postLimit]
+      if(cursor) values.push(cursor)
 
-      const posts = await pool.query(
-        `SELECT * FROM posts 
-          WHERE 
-          ${query}
-          user_id = $1
-          AND STATUS = $2
-          ORDER BY created_at DESC
-          LIMIT $3
-        `,
-        [userId, 'draft', postLimit]
-      );
+      const posts = await getPosts(select, condition, modifier, values)
 
-      if (posts.rows.length === 0) {
-        const mes = cursor ? "No More Draft Posts" : "There is no draft posts";
+      if (posts.length === 0) {
+        const mes = cursor ? "No More Posts" : "There is no posts";
         throw createError(mes, 200);
       }
 
       return {
-        post: posts.rows,
-        newCursor: posts.rows[posts.rows.length - 1].id,
+        post: posts,
+        newCursor: posts[posts.length - 1].id,
       };
     } catch (error) {
       throw error
@@ -568,37 +343,28 @@ class UserServices {
 
   async getsharedpost(postId, userId) {
     try {
-      const post = await pool.query(
-        `
-        SELECT * FROM posts 
-        WHERE id=$1
-        AND status = $2
-        `, 
-        
-        [ postId, 'publish' ]
-      );
+      const select = '*'
+      const condition = ` id = $1 AND
+                          STATUS = $2
+                        `
+      const modifier = ''
+      const values = [postId, 'publish',]
 
-      if (!post.rows.length) throw createError("Post not found", 404);
+      const post = await getPosts(select, condition, modifier, values)
 
-      if (post.rows[0].community_id) {
-        const community_id = post.rows[0].community_id;
+      if (post.length === 0) throw createError("Post not found", 404);
 
-        const community = await pool.query(
-          `
-          SELECT privacy FROM communities
-          WHERE id = $1
-          `,
-          [community_id],
-        );
-        if (community.rows[0].privacy === "private") {
-          const isMember = await pool.query(
-            `
-            SELECT * FROM community_members
-            WHERE user_id = $1 AND community_id = $2
-            `,
-            [userId, community_id],
-          );
-          if (isMember.rows.length == 0)
+      if (post[0].community_id) {
+        const community_id = post[0].community_id;
+
+        const selectFromCommunity = 'privacy'
+        const community = await getCommunityById(community_id, selectFromCommunity)
+
+        if (community.privacy === "private") {
+
+          const isMember = await getCommunityMemberByUserId(userId, community_id)
+
+          if (!isMember)
             throw createError(
               "You can not see this post you are not the member of the community",
               400,
@@ -606,19 +372,18 @@ class UserServices {
         }
       }
 
-      await pool.query(
-        `
-        UPDATE posts SET share_count = share_count + 1 WHERE id = $1
-        `,
-        [postId],
-      );
+      const postField = 'share_count = share_count + 1'
+      const postCondition = 'id = $1'
+      const postValues = [postId]
+      await updatePostRepository(postField, postCondition, postValues)
 
-      const category = post.rows[0].post_category;
-      await this.updateUsersFeedCategory(category, userId);
+      const category = post[0].post_category;
+      
+      await updateOrCreateUsersFeedCategory(userId, category);
 
-      await this.updateUsersVisitedFeed(postId, userId);
+      await createOrUpdatePostVisitedByUser(postId, userId);
 
-      return post.rows[0];
+      return post[0];
     } catch (error) {
       throw error;
     }
@@ -628,28 +393,25 @@ class UserServices {
     try {
       const postLimit = process.env.POST_LIMIT;
 
-      const query = cursor ? `id < '${cursor}' AND` :  ``;
+      const select = '*'
+      const condition = `${cursor ? 'id < $4 AND' : ''}
+                          user_id = $1 AND
+                          STATUS = $2
+                        `
+      const modifier = 'ORDER BY created_at DESC LIMIT $3'
+      const values = [userId, 'publish', postLimit]
+      if(cursor) values.push(cursor)
 
-      const posts = await pool.query(
-        `SELECT * FROM posts 
-          WHERE 
-          ${query}
-          user_id = $1
-          AND STATUS = $2
-          ORDER BY created_at DESC
-          LIMIT $3
-        `,
-        [userId, 'publish', postLimit]
-      );
+      const posts = await getPosts(select, condition, modifier, values)
 
-      if (posts.rows.length === 0) {
+      if (posts.length === 0) {
         const mes = cursor ? "No More Posts" : "There is no posts";
         throw createError(mes, 200);
       }
 
       return {
-        post: posts.rows,
-        newCursor: posts.rows[posts.rows.length - 1].id,
+        post: posts,
+        newCursor: posts[posts.length - 1].id,
       };
     } catch (error) {
       throw error;
@@ -708,7 +470,7 @@ class UserServices {
     }
   }
 
-  async getAllPostByCommnityId(communityid, cursor, userId) {
+  async getAllPostByCommunityId(communityid, cursor, userId) {
     try {
       const postLimit = process.env.POST_LIMIT;
 
@@ -1198,7 +960,7 @@ class UserServices {
 
       const profiles = await pool.query(
         `
-          SELECT * FROM users 
+          SELECT id, name, username, avatar_url, followers_count, following_count, is_verified FROM users 
           WHERE 
           ${q}
           (

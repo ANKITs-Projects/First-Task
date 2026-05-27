@@ -1,5 +1,5 @@
 require("dotenv").config({path: './.env'})
-const {pool} = require('./src/config/pgdb')
+const pool = require('./src/config/pgdb')
  
 const app = require("./src/app")
 
@@ -10,3 +10,12 @@ app.listen(PORT, () => {
 });
 
 
+const shutdown = async (signal) => { 
+    console.log(`${signal} — shutting down gracefully`); 
+    server.close(async () => { 
+        await pool.end(); 
+        process.exit(0); 
+    }); 
+}; 
+process.on('SIGTERM', () => shutdown('SIGTERM')); 
+process.on('SIGINT',  () => shutdown('SIGINT')); 

@@ -6,6 +6,11 @@ const pool = new Pool({
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-});
+  max: 20, 
+  idleTimeoutMillis: 30000, 
+  connectionTimeoutMillis: 2000, 
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false, 
+}); 
+pool.on('error', (err) => { console.error('DB pool error', err); process.exit(1); }); 
 
 module.exports = pool;

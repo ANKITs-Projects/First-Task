@@ -1,12 +1,26 @@
 const express = require("express");
+
+const cors = require('cors'); 
+const helmet = require('helmet'); 
 const cookieParser = require("cookie-parser");
-const adminRoute = require("./routes/admin.route");
-const userRoute = require("./routes/user.route");
-const authRoute = require("./routes/auth.route");
-const superAdmin = require("./routes/superAdmin.route");
-const loggerMiddleware = require("./utils/logger");
-const apiRateLimiter = require("./middlewares/apiRateLimiter.middleware");
+
+const adminRoute = require("./routes/adminRoute");
+const userRoute = require("./routes/userRoute");
+const authRoute = require("./routes/authRoute");
+const superAdmin = require("./routes/superadminRoute");
+
+const loggerMiddleware = require("./middlewares/loggerMiddleware");
+const {apiRateLimiter} = require("./middlewares/apiRateLimiterMiddleware");
 const uploadFiles = require("upload-files-express");
+
+
+app.use(cors({ 
+    origin: process.env.ALLOWED_ORIGINS?.split(','), 
+    credentials: true, 
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'], 
+}));  
+
+app.use(helmet());  // sets X-Frame-Options, HSTS, CSP, etc. 
 
 const app = express();
 
@@ -32,6 +46,14 @@ app.use("/api/superadmin", superAdmin);
 app.get("/", (req, res) => {
   res.send("API is running...");
 });
+
+ 
+app.use((req, res) => { 
+    res.status(404).json({ 
+        success: false, 
+        message: `Route ${req.method} ${req.originalUrl} not found`, 
+    }); 
+}); 
 
 app.use((err, req, res, next) => {
   const status = err.statusCode || 500;

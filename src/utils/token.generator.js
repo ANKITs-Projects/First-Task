@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 
 class TokenGenerator {
-    static generateToke(data, expiresIn, key ) {
+    static generateToken(data, expiresIn, key ) {
         return jwt.sign(data, key, { expiresIn: expiresIn });
     }
 

@@ -5,7 +5,7 @@ const getFeedsValidation = [
     query('page').optional().isNumeric().withMessage("Page query must be a number")
 ]
 
-const commentsValidaion = [
+const commentsValidation = [
     body('comment').notEmpty().withMessage('MediaUrl must be an array and max length will be 5.')
 ]
 
@@ -17,4 +17,4 @@ const userIdValidation = [
 ]
 
 
-module.exports = { commentsValidaion, getFeedsValidation, postIdValidation, userIdValidation}
+module.exports = { commentsValidation, getFeedsValidation, postIdValidation, userIdValidation}

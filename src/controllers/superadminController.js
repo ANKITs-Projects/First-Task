@@ -1,4 +1,4 @@
-const apiResponce = require('./../utils/responceObj')
+const apiResponce = require('../utils/apiResponse')
 
 class SuperAdminController{
     constructor(superAdminService){

@@ -1,4 +1,4 @@
-const apiResponce = require('./../utils/responceObj')
+const apiResponce = require('../utils/apiResponse')
 
 class UserController {
   
@@ -8,7 +8,10 @@ class UserController {
 
   setCategory = async (req, res, next) => {
     try {
-      const result = await this.userService.setCategory(req.body, req.userid);
+      const { category } = req.body
+      const userId = req.userid
+
+      const result = await this.userService.setCategory(category, userId);
 
       res.status(201).json(
         apiResponce(result ,"Category Set Successfully")
@@ -45,9 +48,6 @@ class UserController {
 
       const result = await this.userService.createPost(req.userid, data);
 
-      res.cookie("authToken", req.token, {
-        maxAge: 5 * 60 * 60 * 1000,
-      });
       res.status(201).json(
         apiResponce(result ,"Post Created Successfully"),
       );
@@ -60,6 +60,7 @@ class UserController {
       const {postid} = req.params
       const userId = req.userid
       const post = await this.userService.updatePost(req.body, postid, userId)
+
       res.status(200).json(
         apiResponce({post}, "Post update successfully...")
       )
@@ -73,6 +74,7 @@ class UserController {
       const {postid} = req.params
       const userId = req.userid
       const post = await this.userService.publishDraftPost(postid, userId)
+
       res.status(200).json(
         apiResponce({post}, "Post Published successfully...")
       )
@@ -85,14 +87,11 @@ class UserController {
     try {
       const userid = req.userid;
       const { postid } = req.params;
-      const { comment, parrnetCommentId } = req.body;
-      const result = await this.userService.makeComment(userid, postid, parrnetCommentId, comment);
+      const { comment, parentCommentId } = req.body;
+      const result = await this.userService.makeComment(userid, postid, parentCommentId, comment);
 
-      res.cookie("authToken", req.token, {
-        maxAge: 5 * 60 * 60 * 1000,
-      });
       res.status(201).json(
-         apiResponce(result ,"Comment Successfully"),
+         apiResponce({result} ,"Comment Successfully"),
        );
     } catch (error) {
       next(error);
@@ -102,10 +101,12 @@ class UserController {
   getComment = async (req, res, next) => {
     try {
       const {postid} = req.params
-      const {comments} = await this.userService.getComment(postid)
+      const comments = await this.userService.getComment(postid)
+
+      const message = comments.length === 0 ? "No comments" : "Comments fetched successfully.."
 
       res.status(200).json(
-        apiResponce({comments}, "Comments fetched successfully..")
+        apiResponce({comments}, message)
       )
     } catch (error) {
       next(error)
@@ -117,9 +118,6 @@ class UserController {
       const { postid } = req.params;
       const message = await this.userService.togeLike(postid, req.userid);
 
-      res.cookie("authToken", req.token, {
-        maxAge: 5 * 60 * 60 * 1000,
-      });
       res.status(201).json(
         apiResponce(null , message)
       );
@@ -147,8 +145,10 @@ class UserController {
       const userId = req.userid
       const follower = await this.userService.getFollowers(userId)     
       
+      const message = follower.length === 0 ? "No more followers" : "Follower fetched successfully.."
+
       res.status(200).json(
-        apiResponce({follower}, "Follower fetched successfully..")
+        apiResponce({follower}, message)
       )
     } catch (error) {
       next(error)
@@ -160,8 +160,10 @@ class UserController {
       const userId = req.userid
       const following = await this.userService.getFollowing(userId)     
       
+      const message = following.length === 0 ? "No more following" : "Following fetched successfully.."
+
       res.status(200).json(
-        apiResponce({following}, "Following fetched successfully..")
+        apiResponce({following}, message)
       )
     } catch (error) {
       next(error)
@@ -171,14 +173,12 @@ class UserController {
   getAllMyPost = async (req, res, next) => {
     try {
       const { cursor } = req.query;
-      const { post, newCursor } =
-        await this.userService.getallMypost(req.userid, cursor);
+      const { post, newCursor } = await this.userService.getallMypost(req.userid, cursor);
 
-      res.cookie("authToken", req.token, {
-        maxAge: 5 * 60 * 60 * 1000,
-      });
+      const message = post.length === 0 ? "There is no post" : "Post fetched successfully!!"
+
       res.status(200).json(
-        apiResponce( { post, cursor: newCursor } , "Post fetched successfully!!")
+        apiResponce( { post, cursor: newCursor } , message)
       );
     } catch (error) {
       next(error);
@@ -190,9 +190,6 @@ class UserController {
       const { cursor } = req.query;
       const { post, newCursor } = await this.userService.getDraftPost(req.userid, cursor);
 
-      res.cookie("authToken", req.token, {
-        maxAge: 5 * 60 * 60 * 1000,
-      });
       res.status(200).json(
         apiResponce( { post, cursor: newCursor } , "Post fetched successfully!!")
       );
@@ -208,9 +205,6 @@ class UserController {
       const post =
         await this.userService.getsharedpost(postid, req.userid);
 
-      res.cookie("authToken", req.token, {
-        maxAge: 5 * 60 * 60 * 1000,
-      });
       res.status(200).json(
         apiResponce( { post } , "Post fetched successfully!!")
       );
@@ -223,12 +217,8 @@ class UserController {
     try {
       const { userid } = req.params;
       const { cursor } = req.query;
-      const { post, newCursor } =
-        await this.userService.getAllPostByUserId(userid, cursor);
+      const { post, newCursor } =  await this.userService.getAllPostByUserId(userid, cursor);
 
-      res.cookie("authToken", req.token, {
-        maxAge: 5 * 60 * 60 * 1000,
-      });
       res.status(200).json(
         apiResponce( { post, cursor: newCursor } , "Post fetched successfully!!"),
         );
@@ -253,7 +243,12 @@ class UserController {
       return
       }
       
-      res.cookie("visitedfeedToken", token)
+      res.cookie("visitedfeedToken", token, {
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production', 
+        sameSite: 'strict', 
+        maxAge: 5 * 60 * 60 * 1000
+      })
       res.status(200).json(
           apiResponce( {feed} , "Feeds fetched successfully!!"),
         )
@@ -265,8 +260,6 @@ class UserController {
   createCommunity = async (req, res, next) => {
     try {
       const userId = req.userid
-
-
 
       const avatar = req.files?.avatar?.path || null;
       const banner = req.files?.banner?.path || null;
@@ -295,9 +288,6 @@ class UserController {
       const userId = req.userid
       const { posts, newCursor } = await this.userService.getAllPostByCommnityId(communityid, cursor, userId);
 
-      res.cookie("authToken", req.token, {
-        maxAge: 5 * 60 * 60 * 1000,
-      });
       res.status(200).json(
         apiResponce( { posts, cursor: newCursor } , "Post fetched successfully!!"),
       );

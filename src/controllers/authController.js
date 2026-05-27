@@ -1,4 +1,4 @@
-const apiResponce = require("./../utils/responceObj");
+const apiResponce = require("../utils/apiResponse");
 
 class AuthController {
   constructor(authService) {
@@ -32,10 +32,16 @@ class AuthController {
       );
 
       res.cookie("authToken", token, {
-        maxAge: 5 * 60 * 60 * 1000,
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production', 
+        sameSite: 'strict', 
+        maxAge: 5 * 60 * 60 * 1000
       });
       res.cookie("authRefreshToken", refreshToken, {
-        maxAge: 15 * 60 * 60 * 1000,
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production', 
+        sameSite: 'strict', 
+        maxAge: 15 * 60 * 60 * 1000
       });
       res.status(200).json(apiResponce(userdata, "User login Successfully"));
     } catch (error) {
@@ -84,7 +90,7 @@ class AuthController {
 
       await this.authService.forgetPassword(email);
 
-      res.status(200).json(apiResponce(null, "Email send for reset password"));
+      res.status(200).json(apiResponce(null, 'If an account exists, a reset link has been sent.'));
     } catch (error) {
       next(error);
     }
@@ -96,21 +102,23 @@ class AuthController {
 
       await this.authService.verifyPasswordToken(token);
 
+      const baseUrl = process.env.BASE_URL; 
+      
       res.status(200).json({
         success: true,
         message: "verified successfully",
-        redirect_to_url: `http://localhost:8000/api/auth/change-password/${token}`,
+        redirect_to_url: `<a href='${baseUrl}/api/auth/change-password/${token}'>`,
       });
     } catch (error) {
-      next(errer);
+      next(error);
     }
   };
 
   changePassword = async (req, res, next) => {
     try {
       const { token } = req.params;
-
-      await this.authService.changePassword(token, req.body);
+      const {password} = req.body
+      await this.authService.changePassword(token, password);
 
       res
         .status(200)
@@ -120,17 +128,14 @@ class AuthController {
     }
   };
 
-  userLogout = async (req, res) => {
+  userLogout = async (req, res, next) => {
     try {
       res.clearCookie("authToken");
       res.clearCookie("authRefreshToken");
       res.clearCookie("visitedfeedToken");
       res.status(200).json(apiResponce(null, "User logout Successfully"));
     } catch (error) {
-      res.status(500).json({
-        success: false,
-        message: "Logout fail",
-      });
+      next(error)
     }
   };
 }

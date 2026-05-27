@@ -1,4 +1,4 @@
-const createError = require('../errorObjGenerater')
+const createError = require('../../utils/errorObjGenerater')
 const transporter = require('./transporter')
 
 const sendmail = async(email, html) => {
