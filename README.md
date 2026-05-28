@@ -7,9 +7,9 @@ This backend application serves as the core API for a social media platform, all
 
 - **Authentication & Authorization**: Secure JWT-based user authentication and RBAC (Role-Based Access Control).
 - **RESTful API**: Clean, predictable, and resource-oriented API design.
-- **Database Integration**: Robust PostgreSQL schema structure with built-in migrations and database seeding support.
+- **Database Integration**: PostgreSQL structure schema database.
 - **Error Handling**: Centralized global error handling with clear HTTP status codes.
-- **Validation**: Strict input validation and sanitization for all incoming requests.
+- **Validation**: Strict input validation for incoming requests.
 - **Logging**: Production-grade logging (Winston).
 
 ---
@@ -25,14 +25,17 @@ This backend application serves as the core API for a social media platform, all
 ## ⚙️ Getting Started
 
 ### 1. Clone the Repository
-```bash
+
 git clone (https://github.com/ANKITs-Projects/First-Task.git)
 cd First-Task
 2. Environment VariablesCreate a .env file in the root directory and copy the keys from .env.example
 3. npm install
 npm run dev
 
-Project Structure
+---
+
+## Project Structure
+
 ├── src/
 │   ├── config/          # DB configuration
 │   ├── controllers/     # HTTP request handlers 
