@@ -13,6 +13,7 @@ const loggerMiddleware = require("./middlewares/loggerMiddleware");
 const {apiRateLimiter} = require("./middlewares/apiRateLimiterMiddleware");
 const uploadFiles = require("upload-files-express");
 
+const app = express();
 
 app.use(cors({ 
     origin: process.env.ALLOWED_ORIGINS?.split(','), 
@@ -21,8 +22,6 @@ app.use(cors({
 }));  
 
 app.use(helmet());  // sets X-Frame-Options, HSTS, CSP, etc. 
-
-const app = express();
 
 app.use(uploadFiles({
   maxFileSize: 5 * 1024 * 1024

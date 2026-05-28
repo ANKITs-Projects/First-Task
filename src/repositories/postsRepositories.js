@@ -65,6 +65,24 @@ async function updatePostRepository(fields, condition, values) {
     }
 }
 
+async function searchPost(select, joinCondition, queryCondition, modifier, values) {
+    try {
+        const post = await pool.query(
+            `
+            SELECT ${select}
+            FROM posts
+            ${joinCondition}
+            WHERE ${queryCondition}
+            ${modifier}
+            `,
+            values
+        );
+        
+        return post.rows;
+    } catch (error) {
+        throw error
+    }
+}
 
 
-module.exports = {createNewPost, getPostByPostId, updatePostRepository, getPosts}
+module.exports = {createNewPost, getPostByPostId, updatePostRepository, getPosts, searchPost}

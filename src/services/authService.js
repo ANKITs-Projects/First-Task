@@ -1,5 +1,5 @@
-const PasswordHashing = require("../utils/password.hashing");
-const TokenGenerator = require("../utils/token.generator");
+const PasswordHashing = require("../utils/passwordHashing");
+const TokenGenerator = require("../utils/tokenGenerator");
 const createError = require('../utils/errorObjGenerater');
 const sendEmail = require('../integrations/email-service/sendMail')
 const pool = require('../config/pgdb');
@@ -59,13 +59,14 @@ class AuthServices {
 
       if (!isValid) throw createError("Password is not correct", 400)
 
-      const token = TokenGenerator.generateToke({
+      const token = TokenGenerator.generateToken({
         userId: id,
         role: role,
       }, process.env.TOKEN_EXPIRESIN, process.env.TOKEN_SECRET_KEY)
 
-      const refreshToken = TokenGenerator.generateToke({
-        userId: id
+      const refreshToken = TokenGenerator.generateToken({
+        userId: id,
+        role: role
       }, process.env.REFRESH_TOKEN_EXPIRESIN, process.env.REFRESH_TOKEN_SECRET_KEY)
 
       const sqlQuery = 'UPDATE users SET refresh_token = $2 WHERE id = $1'
@@ -76,6 +77,19 @@ class AuthServices {
       const userdata = {username, id, role}
 
       return { userdata, token, refreshToken}
+    } catch (error) {
+      throw error
+    }
+  }
+
+  async generateNewToken(userid, role) {
+    try {
+      const token = TokenGenerator.generateToken({
+        userId: userid,
+        role: role,
+      }, process.env.TOKEN_EXPIRESIN, process.env.TOKEN_SECRET_KEY)
+
+      return token
     } catch (error) {
       throw error
     }
@@ -110,7 +124,7 @@ class AuthServices {
       if(is_verified) throw createError("Email already verified", 409)
         
 
-      const token = TokenGenerator.generateToke({userId: userId}, process.env.VERIFY_TOKEN_EXPIRESIN, process.env.VERIFY_TOKEN_SECRET_KEY)
+      const token = TokenGenerator.generateToken({userId: userId}, process.env.VERIFY_TOKEN_EXPIRESIN, process.env.VERIFY_TOKEN_SECRET_KEY)
 
       const sqlQuery = 'UPDATE users SET email_verification_token = $2 WHERE id = $1'
       const values = [userId, token]
@@ -138,13 +152,13 @@ class AuthServices {
       const {userId} = TokenGenerator.decodeToken(token, process.env.VERIFY_TOKEN_SECRET_KEY)
 
       const select = 'email_verification_token, is_verified'
-      const user = await getUserByUserId(userId)
+      const user = await getUserByUserId(userId, select)
 
       if(!user || !user.email_verification_token || (token != user.email_verification_token)) 
         throw createError("Invalid verification token", 400)
 
 
-      if(is_verified) throw createError("Email already verified", 409)
+      if(user.is_verified) throw createError("Email already verified", 409)
 
 
       const sqlQuery = 'UPDATE users SET email_verification_token = $3, is_verified = $2 WHERE id=$1'
@@ -166,7 +180,7 @@ class AuthServices {
       }
         
       const {id} = user
-      const token = TokenGenerator.generateToke({userId: id}, process.env.VERIFY_TOKEN_EXPIRESIN, process.env.VERIFY_TOKEN_SECRET_KEY)
+      const token = TokenGenerator.generateToken({userId: id}, process.env.VERIFY_TOKEN_EXPIRESIN, process.env.VERIFY_TOKEN_SECRET_KEY)
 
       const sqlQuery = 'UPDATE users SET reset_password_token=$2 WHERE id=$1'
       const values = [id, token]

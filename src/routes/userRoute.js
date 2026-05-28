@@ -20,7 +20,7 @@ route.post('/createpost', AuthMiddleware.verifyToken, AuthorizationMiddleware.au
 route.post('/makecomment/:postid', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), commentsValidation, apiValidator, userController.makeComment)
 route.get('/getcomments/:postid', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.getComment)
 
-route.post('/togglelike/:postid', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), postIdValidation, apiValidator, userController.togeLike)
+route.post('/togglelike/:postid', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), postIdValidation, apiValidator, userController.toggleLike)
 
 route.post('/follow/:followingId', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.follow)
 
@@ -39,11 +39,11 @@ route.get('/getallpostbyuserid/:userid', AuthMiddleware.verifyToken, Authorizati
 
 route.post('/createcommunity', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.createCommunity)
 
-route.get('/getallpostbycommunityid/:communityid', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.getAllPostByCommnityId)
+route.get('/getallpostbycommunityid/:communityid', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.getAllPostByCommunityId)
 
 route.get('/joincommunity/:communityid', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.joincommunity)
 
-route.get('/getnotification', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.notification)
+route.get('/getnotification', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.getNotification)
 
 route.post('/acceptreqforjoincommunity', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.acceptReqToJoinCommunity)
 

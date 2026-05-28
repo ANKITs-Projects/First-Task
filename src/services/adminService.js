@@ -21,16 +21,11 @@ class AdminServices {
         WHERE 
         ${q}
         role = $1
-        ORDER BY created_at DESC
         `
+      const modifier = 'ORDER BY created_at DESC'
+      const users = await getUsers(select, query, values, modifier)
 
-      const users = await getUsers(select, query, values)
-
-      if(!users.length){
-        throw createError("No More Users..", 400)
-      }
-
-      return {users: users, newCursor: users[users.length - 1].id}
+      return {users: users, newCursor: users.length ? users[users.length - 1].id : null}
     } catch (error) {
       throw error
     }

@@ -113,10 +113,10 @@ class UserController {
     }
   }
 
-  togeLike = async (req, res, next) => {
+  toggleLike = async (req, res, next) => {
     try {
       const { postid } = req.params;
-      const message = await this.userService.togeLike(postid, req.userid);
+      const message = await this.userService.toggleLike(postid, req.userid);
 
       res.status(201).json(
         apiResponce(null , message)
@@ -218,44 +218,15 @@ class UserController {
       const { userid } = req.params;
       const { cursor } = req.query;
       const { post, newCursor } =  await this.userService.getAllPostByUserId(userid, cursor);
+      const message = post.length === 0 ? "There is no post" : "Post fetched successfully!!"
 
       res.status(200).json(
-        apiResponce( { post, cursor: newCursor } , "Post fetched successfully!!"),
+        apiResponce( { post, cursor: newCursor } , message),
         );
     } catch (error) {
       next(error);
     }
   };
-
-  getFeeds = async (req, res, next) => {
-    try {
-      const visitedfeedToken = req.cookies.visitedfeedToken;
-      const { feed, token, removeToken } = await this.userService.getFeeds(
-        req.userid,
-        visitedfeedToken,
-      )
-      
-      if(removeToken) {
-        res.clearCookie("visitedfeedToken");
-        res.status(200).json(
-          apiResponce( {feed} , "Feeds fetched successfully!!"),  
-        )
-      return
-      }
-      
-      res.cookie("visitedfeedToken", token, {
-        httpOnly: true, 
-        secure: process.env.NODE_ENV === 'production', 
-        sameSite: 'strict', 
-        maxAge: 5 * 60 * 60 * 1000
-      })
-      res.status(200).json(
-          apiResponce( {feed} , "Feeds fetched successfully!!"),
-        )
-    } catch (error) {
-      next(error)
-    }
-  }
 
   createCommunity = async (req, res, next) => {
     try {
@@ -270,8 +241,9 @@ class UserController {
         banner
       };
 
+      
       const community = await this.userService.createCommunity(data, userId)
-
+      
       res.status(201).json(
         apiResponce({community}, "Community created successfully!!")
       )
@@ -281,15 +253,17 @@ class UserController {
     }
   }
 
-  getAllPostByCommnityId = async (req, res, next) => {
+  getAllPostByCommunityId = async (req, res, next) => {
     try {
       const { communityid } = req.params;
       const { cursor } = req.query;
       const userId = req.userid
-      const { posts, newCursor } = await this.userService.getAllPostByCommnityId(communityid, cursor, userId);
+      const { posts, newCursor } = await this.userService.getAllPostByCommunityId(communityid, cursor, userId);
+
+      const message = posts.length === 0 ? "No posts" : "Post fetched successfully!!"
 
       res.status(200).json(
-        apiResponce( { posts, cursor: newCursor } , "Post fetched successfully!!"),
+        apiResponce( { posts, cursor: newCursor } , message),
       );
     } catch (error) {
       next(error)
@@ -310,12 +284,13 @@ class UserController {
     }
   }
 
-  notification = async (req, res, next) => {
+  getNotification = async (req, res, next) => {
     try {
-      const notification = await this.userService.notification(req.userid)
+      const notification = await this.userService.getNotification(req.userid)
+      const message = notification.length === 0 ? "There is no notification" : "Notification fetched successfully..."
 
       res.status(200).json(
-        apiResponce({notification}, "Notification fetched successfully...")
+        apiResponce({notification}, message)
       )
     } catch (error) {
       next(error)
@@ -366,8 +341,10 @@ class UserController {
       const userId = req.userid
       const {posts, newCursor} = await this.userService.searchpost(query, cursor, userId)
 
+      const message = posts.length === 0 && cursor ? "No more posts" : posts.length === 0 ? "No posts found according to query" : "Posts get successfully!!"
+
       res.status(200).json(
-        apiResponce({posts, cursor: newCursor}, "Posts get successfully!!")
+        apiResponce({posts: posts, cursor: newCursor}, message)
       )
     } catch (error) {
       next(error)
@@ -380,8 +357,10 @@ class UserController {
       const userId = req.userid
       const {posts, newCursor} = await this.userService.searchpostWithTag(query, cursor, userId)
 
+      const message = posts.length === 0 && cursor ? "No more posts" : posts.length === 0 ? "No posts found according to query" : "Posts get successfully!!"
+
       res.status(200).json(
-        apiResponce({posts, cursor: newCursor}, "Posts get successfully!!")
+        apiResponce({posts, cursor: newCursor}, message)
       )
     } catch (error) {
       next(error)
@@ -394,8 +373,10 @@ class UserController {
       const userId = req.userid
       const {profiles, newCursor} = await this.userService.searchProfile(query, cursor, userId)
 
+      const message = profiles.length === 0 && cursor ? "No more profiles" : profiles.length === 0 ? "No profiles found according to query" : "profiles get successfully!!"
+
       res.status(200).json(
-        apiResponce({profiles, cursor: newCursor}, "Profiles get successfully!!")
+        apiResponce({profiles, cursor: newCursor}, message)
       )
     } catch (error) {
       next(error)
@@ -408,9 +389,41 @@ class UserController {
       const userId = req.userid
       const {communities, newCursor} = await this.userService.searchCommunity(query, cursor, userId)
 
+      const message = communities.length === 0 && cursor ? "No more communities" : communities.length === 0 ? "No communities found according to query" : "communities get successfully!!"
+
       res.status(200).json(
-        apiResponce({communities, cursor: newCursor}, "Communities get successfully!!")
+        apiResponce({communities, cursor: newCursor}, message)
       )
+    } catch (error) {
+      next(error)
+    }
+  }
+
+  getFeeds = async (req, res, next) => {
+    try {
+      const visitedfeedToken = req.cookies.visitedfeedToken;
+      const { feed, token, removeToken } = await this.userService.getFeeds(
+        req.userid,
+        visitedfeedToken,
+      )
+      
+      if(removeToken) {
+        res.clearCookie("visitedfeedToken");
+        res.status(200).json(
+          apiResponce( {feed} , "Feeds fetched successfully!!"),  
+        )
+      return
+      }
+      
+      res.cookie("visitedfeedToken", token, {
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production', 
+        sameSite: 'strict', 
+        maxAge: 5 * 60 * 60 * 1000
+      })
+      res.status(200).json(
+          apiResponce( {feed} , "Feeds fetched successfully!!"),
+        )
     } catch (error) {
       next(error)
     }

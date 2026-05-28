@@ -9,9 +9,12 @@ const {authController} = require('../container')
 const { authRateLimiter } = require('../middlewares/apiRateLimiterMiddleware')
 
 
+ 
 
-route.post('/signup', authRateLimiter, signupValidation, apiValidator, authController.signup)
+route.post('/signup', authRateLimiter, signupValidation, apiValidator, authController.signUp)
 route.post('/login', authRateLimiter, loginValidation, apiValidator, authController.login)
+
+route.get('/generatenewtoken', AuthMiddleware.verifyRefreshToken, authController.generateNewToken)
 
 route.get('/profile', AuthMiddleware.verifyToken, authController.profile)
 

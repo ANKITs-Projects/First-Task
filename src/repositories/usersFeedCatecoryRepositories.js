@@ -24,4 +24,19 @@ async function updateOrCreateUsersFeedCategory(userid, category) {
     }
 }
 
-module.exports = {updateOrCreateUsersFeedCategory}
+async function getUsersFeedCategory(userId) {
+    try {
+        const category = await pool.query(
+                `
+                SELECT * FROM users_feed_category
+                WHERE user_id = $1
+                `,
+                [userId],
+      );
+      return category.rows[0]
+    } catch (error) {
+        throw error
+    }
+}
+
+module.exports = {updateOrCreateUsersFeedCategory, getUsersFeedCategory}

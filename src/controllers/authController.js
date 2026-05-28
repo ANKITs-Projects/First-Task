@@ -5,7 +5,7 @@ class AuthController {
     this.authService = authService;
   }
 
-  signup = async (req, res, next) => {
+  signUp = async (req, res, next) => {
     try {
       
       const avatar = req.files?.avatar?.path || null;
@@ -24,7 +24,7 @@ class AuthController {
       next(error);
     }
   };
-
+     
   login = async (req, res, next) => {
     try {
       const { userdata, token, refreshToken } = await this.authService.login(
@@ -48,6 +48,26 @@ class AuthController {
       next(error);
     }
   };
+
+  generateNewToken = async (req, res, next) => {
+    try {
+      const userId = req.userid 
+      const role = req.role
+      const token = await this.authService.generateNewToken(userId, role)
+
+      res.cookie("authToken", token, {
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production', 
+        sameSite: 'strict', 
+        maxAge: 5 * 60 * 60 * 1000
+      })
+      res.status(200).json(apiResponce(null, "Token generated successfully.."));
+
+
+    } catch (error) {
+      next(error)
+    }
+  }
 
   profile = async (req, res, next) => {
     try {

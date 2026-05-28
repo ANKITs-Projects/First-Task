@@ -12,14 +12,9 @@ class AdminController {
             
             const {users, newCursor} = await this.adminService.getAllUsers(cursor)
 
-            res.cookie("authToken", req.token, {
-                httpOnly: true, 
-                secure: process.env.NODE_ENV === 'production', 
-                sameSite: 'strict', 
-                maxAge: 5 * 60 * 60 * 1000
-            })
+            const message = users.length === 0 ? "No more users" : "User fetched successfully"
             res.status(200).json(
-                apiResponce({users, cursor: newCursor}, "User fetched successfully")
+                apiResponce({users, cursor: newCursor}, message)
             )
         } catch (error) {
             next(error)

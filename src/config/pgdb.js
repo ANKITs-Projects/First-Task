@@ -11,6 +11,7 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000, 
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false, 
 }); 
+
 pool.on('error', (err) => { console.error('DB pool error', err); process.exit(1); }); 
 
 module.exports = pool;

@@ -46,13 +46,15 @@ async function getUserByUserId(id, select) {
     }
 }
 
-async function getUsers(select, query, values) {
+async function getUsers(select, query, values, modifier = 'ORDER BY users.created_at DESC' ) {
     try {
         const user = await pool.query(
             `
             SELECT ${select}
             FROM users
+            WHERE
             ${query}
+            ${modifier}
             `,
             values
         )  
@@ -101,6 +103,7 @@ async function deleteUserQuery(id) {
         throw error
     }
 }
+
 
 
 

@@ -1,17 +1,18 @@
-const TokenGenerator = require("../utils/token.generator");
+const TokenGenerator = require("../utils/tokenGenerator");
 const createError = require("../utils/errorObjGenerater");
 const { uploadOnCloudinary } = require("../config/cloudinary");
 const pool = require("../config/pgdb");
 const { getUsersCategoryByUserId, createNewUsersCategory, updateUsersCategory } = require("../repositories/usersCategoryRepositories");
-const { updateOrCreateUsersFeedCategory } = require("../repositories/usersFeedCatecoryRepositories");
-const { getCommunityById } = require("../repositories/communitiesRepositories");
-const { getCommunityMemberByUserId } = require("../repositories/communityMembers");
-const { createNewPost, getPostByPostId, updatePostRepository, getPosts } = require("../repositories/postsRepositories");
+const { updateOrCreateUsersFeedCategory, getUsersFeedCategory } = require("../repositories/usersFeedCatecoryRepositories");
+const { getCommunityById, getCommunity, updateCommunity, createCommunityRepostory } = require("../repositories/communitiesRepositories");
+const { getCommunityMemberByUserId, makeCommunityMember, getCommunityMember, updateCommunityMember } = require("../repositories/communityMembers");
+const { createNewPost, getPostByPostId, updatePostRepository, getPosts, searchPost } = require("../repositories/postsRepositories");
 const { createComment, getCommentRepository } = require("../repositories/commentsRepositories");
-const { createOrUpdatePostVisitedByUser } = require("../repositories/postVisitedbyUserRepositories");
+const { createOrUpdatePostVisitedByUser, getVisitedPostsByUserId } = require("../repositories/postVisitedbyUserRepositories");
 const { toggleLikeRepository } = require("../repositories/likesRepositories");
 const { followRepository, getFollowersRepository, getFollowingRepository } = require("../repositories/followersRepositories");
-const { getUserByUserId, updateUser } = require("../repositories/usersRepositories");
+const { getUserByUserId, updateUser, getUsers } = require("../repositories/usersRepositories");
+const { createnotification, getAllNotification } = require("../repositories/notificationRepositories");
 
 class UserServices {
   constructor(){}
@@ -281,7 +282,7 @@ class UserServices {
     }
   }
 
-  async getAllMyPosts(userId, cursor) {
+  async getallMypost(userId, cursor) {
     try {
       const postLimit = process.env.POST_LIMIT;
 
@@ -405,8 +406,10 @@ class UserServices {
       const posts = await getPosts(select, condition, modifier, values)
 
       if (posts.length === 0) {
-        const mes = cursor ? "No More Posts" : "There is no posts";
-        throw createError(mes, 200);
+        return {
+        post: posts,
+        newCursor: null
+      };
       }
 
       return {
@@ -420,51 +423,37 @@ class UserServices {
 
   async createCommunity(data, userId) {
     try {
+      
       const { community_name, description, category, avatar, banner, privacy } =
         data;
 
-      const communityExist = await pool.query(
-        `
-        SELECT * FROM communities
-        WHERE community_name = $1
-        `,
-        [community_name]
-      )
+      const selectFromCommunity = "*"
+      const queryforCommunity = 'community_name = $1'
+      const valuesForCommunity = [community_name]
+      const communityExist = await getCommunity(selectFromCommunity, queryforCommunity, valuesForCommunity)
 
-      if(communityExist.rows.length) {
+      if(communityExist.length > 0) {
         throw createError("Community with same name already exist..", 400)
       }
 
       const avatar_url = avatar ? await uploadOnCloudinary(avatar) : null;
       const banner_url = banner ? await uploadOnCloudinary(banner) : null;
 
-      const community = await pool.query(
-        `
-        INSERT INTO communities (community_name, description, category, avatar_url, banner_url, owner_id, privacy)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING *
-        `,
-        [
-          community_name,
-          description,
-          category,
-          avatar_url,
-          banner_url,
-          userId,
-          privacy,
-        ],
-      );
+      const fieldsForCommunity = 'community_name, description, category, avatar_url, banner_url, owner_id, privacy'
+      const valueNotationForCommunity = '$1, $2, $3, $4, $5, $6, $7'
+      const values = [ community_name, description, category, avatar_url,  banner_url, userId, privacy ]
 
-      const community_id = community.rows[0].id;
-      await pool.query(
-        `
-        INSERT INTO community_members (user_id, community_id, role)
-        VALUES ($1,$2,$3)
-        `,
-        [userId, community_id, "admin"],
-      );
+      const community = await createCommunityRepostory(fieldsForCommunity, valueNotationForCommunity, values)
 
-      return community.rows[0];
+      const community_id = community.id;
+
+      const fieldsForCommunityMember = 'user_id, community_id, role'
+      const valueNotationForCommunityMember = '$1,$2,$3'
+      const valuesForCommunityMember =  [userId, community_id, "admin"]
+
+      await makeCommunityMember(fieldsForCommunityMember, valueNotationForCommunityMember, valuesForCommunityMember)
+      
+      return community;
     } catch (error) {
       throw error;
     }
@@ -472,57 +461,46 @@ class UserServices {
 
   async getAllPostByCommunityId(communityid, cursor, userId) {
     try {
-      const postLimit = process.env.POST_LIMIT;
 
-      const query = cursor ? `id < '${cursor}' AND` : ``;
+      const selectFromCommunity = 'privacy'
 
-      const community = await pool.query(
-        `
-        SELECT privacy FROM communities
-        WHERE id = $1
-        `,
-        [communityid],
-      );
+      const community = await getCommunityById(communityid, selectFromCommunity)
 
-      if (community.rows.length === 0)
-        throw createError("Community not exist..", 400);
+      if (!community)
+        throw createError("Community not exist..", 404);
 
-      if (community.rows[0].privacy === "private") {
-        const member = await pool.query(
-          `
-          SELECT * FROM community_members
-          WHERE user_id = $1 AND community_id = $2
-          `,
-          [userId, communityid],
-        );
-        if (member.rows.length === 0)
+      if (community.privacy === "private") {
+  
+        const member = await getCommunityMemberByUserId(userId, communityid)
+
+        if (!member)
           throw createError(
             "This is a privet community and you are not the member of this community",
             401,
           );
       }
 
-      const posts = await pool.query(
-        `SELECT * FROM posts
-         WHERE 
-         ${query}
-         status = $2
-         AND
-         community_id = $1
-          ORDER BY created_at DESC
-          LIMIT $3
-          `,
-        [communityid, 'publish' ,postLimit]
-      );
+      
+      const postLimit = process.env.POST_LIMIT;
+      
+      const selectFromPosts = '*'
+      const conditionForposts = `${cursor ? 'id < $4 AND': ''} status = $1 AND community_id = $2`
+      const modifierForPosts = 'ORDER BY created_at DESC LIMIT $3'
+      const valuseForPosts = ['publish', communityid, postLimit]
+      if(cursor) valuseForPosts.push(cursor)
 
-      if (posts.rows.length === 0) {
-        const mes = cursor ? "No More Posts" : "There is no posts";
-        throw createError(mes, 200);
+      const posts = await getPosts(selectFromPosts, conditionForposts, modifierForPosts, valuseForPosts)
+
+      if (posts.length === 0) {
+        return {
+          posts: [],
+          newCursor: null
+        }
       }
 
       return {
-        posts: posts.rows,
-        newCursor: posts.rows[posts.rows.length - 1].id,
+        posts: posts,
+        newCursor: posts[posts.length - 1].id,
       };
     } catch (error) {
       throw error;
@@ -531,52 +509,40 @@ class UserServices {
 
   async joincommunity(communityid, userid) {
     try {
-      const community = await pool.query(
-        `
-        SELECT * FROM communities 
-        WHERE id=$1
-        `,
-        [communityid],
-      );
+      const selectFromCommunity = '*'
 
-      if (community.rows.length == 0)
-        throw createError("Community not exist..", 400);
+      const community = await getCommunityById(communityid, selectFromCommunity)
 
-      const isMember = await pool.query(
-        `
-          SELECT * FROM community_members
-          WHERE user_id = $1 AND community_id = $2
-          `,
-        [userid, communityid],
-      );
+      if (!community)
+        throw createError("Community not exist..", 404);
 
-      if (isMember.rows.length)
+      const isMember = await getCommunityMemberByUserId(userid, communityid)
+
+      if (isMember)
         throw createError("You are already a member..", 400);
 
-      const { privacy } = community.rows[0];
+      const { privacy } = community;
       let member;
 
       if (privacy === "public" || privacy == "restricted") {
         const can_post = privacy === "public";
-        member = await pool.query(
-          `
-          INSERT INTO community_members(user_id, community_id, can_post)
-          VALUES ($1, $2, $3)
-          RETURNING *
-          `,
-          [userid, communityid, can_post],
-        );
-      } else {
-        const admin = await pool.query(
-          `
-          SELECT user_id
-          FROM community_members
-          WHERE community_id = $1 AND role = $2
-          `,
-          [communityid, "admin"],
-        );
 
-        const { community_name, id } = community.rows[0];
+        const fieldsForCommunityMember = 'user_id, community_id, can_post'
+        const valueNotationForCommunityMember = '$1, $2, $3'
+        const valuesForCommunityMember = [userid, communityid, can_post]
+
+        member = await makeCommunityMember(fieldsForCommunityMember, valueNotationForCommunityMember, valuesForCommunityMember)
+
+
+      } else {
+
+        const selectFromCommunityMember = 'user_id'
+        const queryforCommunityMember = 'community_id = $1 AND role = $2'
+        const valuesForCommunityMember = [communityid, "admin"]
+
+        const admin = await getCommunityMember(selectFromCommunityMember, queryforCommunityMember, valuesForCommunityMember)
+
+        const { community_name, id } = community;
 
         const message = `
           UserId:- ${userid}
@@ -585,8 +551,7 @@ class UserServices {
           `;
 
         const values = [];
-        const placeholders = admin.rows
-          .map((ele, index) => {
+        const placeholders = admin.map((ele, index) => {
             const base = index * 3;
 
             values.push(ele.user_id, message, userid);
@@ -595,50 +560,40 @@ class UserServices {
           })
           .join(", ");
 
-        const notify = await pool.query(
-          `
-          INSERT INTO notification (receiver_id, message, sender_id)
-          VALUES ${placeholders}
-          RETURNING *;
-          `,
-          values,
-        );
+        
+        const fieldsForNotification = 'receiver_id, message, sender_id'
+        const valueNotationForNotification = placeholders
+        const valuesForNotification = values
 
-        return { data: notify.rows[0], message: "Request to join" };
+        const notify = await createnotification(fieldsForNotification, valueNotationForNotification, valuesForNotification)
+
+        return { data: notify, message: "Request to join" };
       }
 
-      await pool.query(
-        `
-          UPDATE communities SET member_count = member_count + 1
-          WHERE id=$1
-          `,
-        [communityid],
-      );
+      const fieldsToUpdateCommunity = 'member_count = member_count + 1'
+      const queryToUpdateCommunity = 'id=$1'
+      const valuesToUpdateCommunity = [communityid]
+
+      await updateCommunity(fieldsToUpdateCommunity, queryToUpdateCommunity, valuesToUpdateCommunity)
 
       return {
-        data: member.rows[0],
-        message: `You are joined to ${community.rows[0].community_name} community`,
+        data: member,
+        message: `You are joined to ${community.community_name} community`,
       };
     } catch (error) {
       throw error;
     }
   }
 
-  async notification(userId) {
+  async getNotification(userId) {
     try {
-      const notification = await pool.query(
-        `
-        SELECT * FROM notification
-        WHERE receiver_id = $1
-        ORDER BY created_at DESC
-        `,
-        [userId]
-      )
+      const selectFromNotification = '*'
+      const queryforNotification = 'receiver_id = $1'
+      const modifierForNotification = 'ORDER BY created_at DESC'
+      const valuesForNotification = [userId]
+      const notification = await getAllNotification(selectFromNotification, queryforNotification, modifierForNotification, valuesForNotification)
 
-      if(notification.rows.length == 0)
-        throw createError("There is no notification..", 200)
-
-      return notification.rows
+      return notification
 
     } catch (error) {
       throw error
@@ -647,40 +602,28 @@ class UserServices {
 
   async reqToPostInCommunity(communityid, userid) {
     try {
-      const community = await pool.query(
-        `
-        SELECT * FROM communities 
-        WHERE id=$1
-        `,
-        [communityid],
-      );
 
-      if (community.rows.length == 0)
-        throw createError("Community not exist..", 400);
+      const selectFromCommunity = '*'
 
-      const isMember = await pool.query(
-        `
-          SELECT * FROM community_members
-          WHERE user_id = $1 AND community_id = $2
-          `,
-        [userid, communityid],
-      );
+      const community = await getCommunityById(communityid, selectFromCommunity)
 
-      if (!isMember.rows.length) throw createError("You are not member..", 400);
+      if (!community)
+        throw createError("Community not exist..", 404);
 
-      if (isMember.rows[0].can_post)
+      const isMember = await getCommunityMemberByUserId(userid, communityid)
+
+      if (!isMember) throw createError("You are not member..", 400);
+
+      if (isMember.can_post)
         throw createError("You already can post", 400);
 
-      const admin = await pool.query(
-        `
-        SELECT user_id
-        FROM community_members
-        WHERE community_id = $1 AND role = $2
-        `,
-        [communityid, "admin"],
-      );
+      const selectFromCommunityMember = 'user_id'
+      const queryforCommunityMember = 'community_id = $1 AND role = $2'
+      const valuesForCommunityMember = [communityid, "admin"]
 
-      const { community_name, id } = community.rows[0];
+      const admin = await getCommunityMember(selectFromCommunityMember, queryforCommunityMember, valuesForCommunityMember)
+
+      const { community_name, id } = community;
 
       const message = `
         UserId:- ${userid}
@@ -689,8 +632,7 @@ class UserServices {
         `;
 
       const values = [];
-      const placeholders = admin.rows
-        .map((ele, index) => {
+      const placeholders = admin.map((ele, index) => {
           const base = index * 3;
 
           values.push(ele.user_id, message, userid);
@@ -699,17 +641,15 @@ class UserServices {
         })
         .join(", ");
 
-      const notify = await pool.query(
-        `
-        INSERT INTO notification (receiver_id, message, sender_id)
-        VALUES ${placeholders}
-        RETURNING *;
-        `,
-        values,
-      );
+      const fieldsForNotification = 'receiver_id, message, sender_id'
+      const valueNotationForNotification = placeholders
+      const valuesForNotification = values
+
+      const notify = await createnotification(fieldsForNotification, valueNotationForNotification, valuesForNotification)
+
 
       return {
-        data: notify.rows[0],
+        data: notify,
         message: "Notification send successfully",
       };
     } catch (error) {
@@ -720,75 +660,53 @@ class UserServices {
   async acceptReqToJoinCommunity(data, userId) {
     try {
       const { communityId, requesterId } = data;
-      const community = await pool.query(
-        `
-        SELECT * FROM communities 
-        WHERE id = $1
-        `,
-        [communityId],
-      );
+      
+      const selectFromCommunity = '*'
 
-      if (community.rows.length === 0)
-        throw createError("Community not founde", 404);
+      const community = await getCommunityById(communityId, selectFromCommunity)
 
-      const admin = await pool.query(
-        `
-        SELECT role FROM community_members 
-        WHERE user_id = $1 AND community_id = $2
-        `,
-        [userId, communityId],
-      );
+      if (!community)
+        throw createError("Community not exist..", 404);
 
-      if (admin.rows.length == 0)
+      const admin = await getCommunityMemberByUserId(userId, communityId)
+
+      if (!admin)
         throw createError("You are not member of the community", 400);
 
-      if (admin.rows[0].role != "admin")
+      if (admin.role != "admin")
         throw createError("You are not admin", 403);
 
-      const isAlreadyMember = await pool.query(
-        `
-        SELECT * FROM community_members 
-        WHERE user_id = $1 AND community_id = $2
-        `,
-        [requesterId, communityId],
-      );
-      if (isAlreadyMember.rows.length)
+      const isAlreadyMember = await getCommunityMemberByUserId(requesterId, communityId)
+
+      if (isAlreadyMember)
         throw createError("He is already a member of this community..", 400);
 
-      const member = await pool.query(
-        `
-        INSERT INTO community_members(user_id, community_id, can_post)
-        VALUES ($1, $2, $3)
-        RETURNING *
-        `,
-        [requesterId, communityId, false],
-      );
+      const fieldsForCommunityMember = 'user_id, community_id, can_post'
+      const valueNotationForCommunityMember = '$1, $2, $3'
+      const valuesForCommunityMember = [requesterId, communityId, false]
 
-      await pool.query(
-        `
-        UPDATE communities 
-        SET member_count = member_count + 1
-        WHERE id = $1
-        `,
-        [communityId],
-      );
+      const member = await makeCommunityMember(fieldsForCommunityMember, valueNotationForCommunityMember, valuesForCommunityMember)
+
+      const fieldsToUpdateCommunity = 'member_count = member_count + 1'
+      const queryToUpdateCommunity = 'id = $1'
+      const valuesToUpdateCommunity = [communityId]
+
+      await updateCommunity(fieldsToUpdateCommunity, queryToUpdateCommunity, valuesToUpdateCommunity)
 
       // send notification to requester
-      const { community_name, id } = community.rows[0];
+      const { community_name, id } = community;
       const message = `
         You have joined the community:- ${community_name}
         CommunityId:- community Id: ${id}
         `;
 
-      await pool.query(
-        `
-        INSERT INTO notification (receiver_id, message, sender_id)
-        VALUES ($1, $2, $3)
-        `,
-        [requesterId, message, userId],
-      );
+      const fieldsForNotification = 'receiver_id, message, sender_id'
+      const valueNotationForNotification = '$1, $2, $3'
+      const valuesForNotification = [requesterId, message, userId]
 
-      return member.rows[0];
+      const notify = await createnotification(fieldsForNotification, valueNotationForNotification, valuesForNotification)
+
+      return member;
     } catch (error) {
       throw error;
     }
@@ -797,69 +715,50 @@ class UserServices {
   async acceptReqToPostInCommunity(data, userId) {
     try {
       const { communityId, requesterId } = data;
-      const community = await pool.query(
-        `
-        SELECT * FROM communities 
-        WHERE id = $1
-        `,
-        [communityId],
-      );
 
-      if (community.rows.length === 0)
-        throw createError("Community not founde", 404);
+      const selectFromCommunity = '*'
 
-      const admin = await pool.query(
-        `
-        SELECT role FROM community_members 
-        WHERE user_id = $1 AND community_id = $2
-        `,
-        [userId, communityId],
-      );
+      const community = await getCommunityById(communityId, selectFromCommunity)
 
-      if (admin.rows.length == 0)
+      if (!community)
+        throw createError("Community not exist..", 404);
+
+      const admin = await getCommunityMemberByUserId(userId, communityId)
+
+      if (!admin)
         throw createError("You are not member of the community", 400);
 
-      if (admin.rows[0].role != "admin")
+      if (admin.role != "admin")
         throw createError("You are not admin", 403);
 
-      const isAlreadyCanPost = await pool.query(
-        `
-        SELECT * FROM community_members 
-        WHERE user_id = $1 AND community_id = $2
-        `,
-        [requesterId, communityId],
-      );
-      if (isAlreadyCanPost.rows.length === 0)
+      const isAlreadyCanPost = await getCommunityMemberByUserId(requesterId, communityId)
+
+      if (!isAlreadyCanPost)
         throw createError("He is not member of this community..", 400);
 
-      if (isAlreadyCanPost.rows[0].can_post)
+      if (isAlreadyCanPost.can_post)
         throw createError("He is already can post...", 400);
 
-      const member = await pool.query(
-        `
-        UPDATE community_members SET can_post = $3
-        WHERE user_id = $1 AND community_id = $2
-        RETURNING *
-        `,
-        [requesterId, communityId, true],
-      );
+      const fieldsToUpdateCommunityMember = 'can_post = $3'
+      const conditionToUpdateCommunityMember = 'user_id = $1 AND community_id = $2'
+      const valuesToUpdateCommunityMember = [requesterId, communityId, true]
 
-      // send notification to requester
-      const { community_name, id } = community.rows[0];
+      const member = await updateCommunityMember(fieldsToUpdateCommunityMember, conditionToUpdateCommunityMember, valuesToUpdateCommunityMember)
+
+
+      const { community_name, id } = community;
       const message = `
         You can post now in this community:- ${community_name}
         CommunityId:- community Id: ${id}
         `;
 
-      await pool.query(
-        `
-        INSERT INTO notification (receiver_id, message, sender_id)
-        VALUES ($1, $2, $3)
-        `,
-        [requesterId, message, userId],
-      );
+      const fieldsForNotification = 'receiver_id, message, sender_id'
+      const valueNotationForNotification = '$1, $2, $3'
+      const valuesForNotification = [requesterId, message, userId]
 
-      return member.rows[0];
+      const notify = await createnotification(fieldsForNotification, valueNotationForNotification, valuesForNotification)
+
+      return member;
     } catch (error) {
       throw error;
     }
@@ -870,40 +769,31 @@ class UserServices {
       const postLimit = process.env.POST_LIMIT;
       const q = cursor ? `p.id < '${cursor}' AND` : "";
 
-      const post = await pool.query(
-        `
-        SELECT
-        p.*,
-        c.community_name
-        FROM posts p
-        LEFT JOIN communities c
-            ON p.community_id = c.id
-        WHERE
-            ${q}
-            status = $2
-            AND
-            (
-                p.community_id IS NULL
-                OR c.privacy != 'private'
-            )
-            AND (
-                p.title ILIKE '%' || $1 || '%'
-                OR p.content ILIKE '%' || $1 || '%'
-                OR c.community_name ILIKE '%' || $1 || '%'
-                OR c.description ILIKE '%' || $1 || '%'
-            )
-            ORDER BY p.created_at DESC
-            LIMIT ${postLimit}
-        `,
-        [query, 'publish'],
-      );
+      const selectFromPosts = 'posts.*, c.community_name'
+      const joinCondition =  'LEFT JOIN communities c ON posts.community_id = c.id'
+      const queryCondition = `${cursor ? `posts.id < $4 AND` : ''}
+                        status = $1        
+                        AND
+                        (
+                            posts.community_id IS NULL
+                            OR c.privacy != 'private'
+                        )
+                        AND (
+                            posts.title ILIKE '%' || $2 || '%'
+                            OR posts.content ILIKE '%' || $2 || '%'
+                            OR c.community_name ILIKE '%' || $2 || '%'
+                            OR c.description ILIKE '%' || $2 || '%'
+                        )
+                        `
+      const modifier = 'ORDER BY posts.created_at DESC LIMIT $3'
+      const values = ['publish', query,  postLimit]
+      if(cursor) values.push(cursor)
 
-      if (post.rows.length === 0)
-        throw createError("No Post found according to query..");
+      const posts = await  searchPost(selectFromPosts, joinCondition, queryCondition, modifier, values)
 
       return {
-        posts: post.rows,
-        newCursor: post.rows[post.rows.length - 1].id,
+        posts: posts,
+        newCursor: posts[posts.length - 1] ? posts[posts.length - 1].id : null
       };
     } catch (error) {
       throw error;
@@ -913,40 +803,31 @@ class UserServices {
   async searchpostWithTag(query, cursor, userId) {
     try {
       const postLimit = process.env.POST_LIMIT;
-      const q = cursor ? `p.id < '${cursor}' AND` : "";
+      
       const tag = query[0] === "#" ? query : `#${query}`;
 
-      const post = await pool.query(
-        `
-        SELECT
-            p.*,
-            c.community_name
-        FROM posts p
-        LEFT JOIN communities c
-            ON p.community_id = c.id
-        WHERE
-            ${q}
-            status = $2
-            And
-            (
-                p.community_id IS NULL
-                OR c.privacy != 'private'
-            )
-            AND (
-                $1 = ANY(p.tags)
-            )
-        ORDER BY p.created_at DESC
-        LIMIT $3
-        `,
-        [tag, 'publish', postLimit],
-      );
+      const selectFromPosts = 'posts.*, c.community_name'
+      const joinCondition =  'LEFT JOIN communities c ON posts.community_id = c.id'
+      const queryCondition = `${cursor ? `posts.id < $4 AND` : ''}
+                              status = $1        
+                              And
+                              (
+                                  posts.community_id IS NULL
+                                  OR c.privacy != 'private'
+                              )
+                              AND (
+                                  $2 = ANY(posts.tags)
+                              )
+                              `   
+      const modifier = 'ORDER BY posts.created_at DESC LIMIT $3'
+      const values = ['publish', tag,  postLimit]
+      if(cursor) values.push(cursor)
 
-      if (post.rows.length === 0)
-        throw createError("No Post found according to query..");
+      const posts = await  searchPost(selectFromPosts, joinCondition, queryCondition, modifier, values)
 
       return {
-        posts: post.rows,
-        newCursor: post.rows[post.rows.length - 1].id,
+        posts: posts,
+        newCursor: posts[posts.length - 1] ? posts[posts.length - 1].id : null
       };
     } catch (error) {
       throw error;
@@ -956,29 +837,23 @@ class UserServices {
   async searchProfile(query, cursor, userId) {
     try {
       const postLimit = process.env.POST_LIMIT;
-      const q = cursor ? `users.id < '${cursor}' AND` : "";
 
-      const profiles = await pool.query(
-        `
-          SELECT id, name, username, avatar_url, followers_count, following_count, is_verified FROM users 
-          WHERE 
-          ${q}
-          (
-          users.name ILIKE '%' || $1 || '%'
-          OR users.username ILIKE '%' || $1 || '%'
-          )
-          ORDER BY users.followers_count DESC
-          LIMIT $2
-          `,
-        [query, postLimit],
-      );
+      const selectFromUsers = 'id, name, username, avatar_url, followers_count, following_count, is_verified'
+      const queryForUsers = `${cursor ? 'id < $3 AND' : ''}
+                            (
+                            name ILIKE '%' || $1 || '%'
+                            OR username ILIKE '%' || $1 || '%'
+                            )
+                            `
+      const modifierForUsers = 'ORDER BY followers_count DESC LIMIT $2'
+      const ValuesForUsers = [query, postLimit]
+      if(cursor) ValuesForUsers.push(cursor)
 
-      if (profiles.rows.length === 0)
-        throw createError("No profiles found according to query..");
+      const profiles = await getUsers(selectFromUsers, queryForUsers, ValuesForUsers, modifierForUsers)
 
       return {
-        profiles: profiles.rows,
-        newCursor: profiles.rows[profiles.rows.length - 1].id,
+        profiles: profiles,
+        newCursor: profiles[profiles.length - 1] ? profiles[profiles.length - 1].id : null
       };
     } catch (error) {
       throw error;
@@ -988,29 +863,24 @@ class UserServices {
   async searchCommunity(query, cursor, userId) {
     try {
       const postLimit = process.env.POST_LIMIT;
-      const q = cursor ? `communities.id < '${cursor}' AND` : "";
 
-      const communities = await pool.query(
-        `
-          SELECT * FROM communities 
-          WHERE 
-          ${q}
-          (
-          communities.community_name ILIKE '%' || $1 || '%'
-          OR communities.description ILIKE '%' || $1 || '%'
-          )
-          ORDER BY communities.member_count DESC
-          LIMIT $2
-          `,
-        [query, postLimit],
-      );
+      const selectFromCommunities = '*'
+      const queryforCommunities = `${cursor ? `id < $3 AND` : ''}
+                                  (
+                                  community_name ILIKE '%' || $1 || '%'
+                                  OR description ILIKE '%' || $1 || '%'
+                                  )
+                                  `
+      const modifierForCommunity = 'ORDER BY member_count DESC LIMIT $2'
+      const valuesForCommunity = [query, postLimit]
+      if(cursor) valuesForCommunity.push(cursor)
 
-      if (communities.rows.length === 0)
-        throw createError("No profiles found according to query..");
+      const communities = await getCommunity(selectFromCommunities, queryforCommunities, valuesForCommunity, modifierForCommunity)
+
 
       return {
-        communities: communities.rows,
-        newCursor: communities.rows[communities.rows.length - 1].id,
+        communities: communities,
+        newCursor: communities[communities.length - 1] ? communities[communities.length - 1].id : null
       };
     } catch (error) {
       throw error;
@@ -1024,76 +894,57 @@ class UserServices {
       let visitedFeedIds = [];
 
       if (visitedfeedToken) {
-        visitedFeedIds = TokenGenerator.decodeToken(
-          visitedfeedToken,
-          process.env.VISITED_FEED_TOKEN,
-        ).feedIds;
+        visitedFeedIds = TokenGenerator.decodeToken( visitedfeedToken, process.env.VISITED_FEED_TOKEN).feedIds;
       }
 
-      const visitedPosts = await pool.query(
-        `
-        SELECT post_id FROM post_visited_by_user 
-        WHERE user_id = $1
-        `,
-        [userId],
-      );
+      
+      const selectFromVisitedPost = 'post_id'
 
-      if (visitedPosts.rows.length > 0) {
-        const visitedPostIds = visitedPosts.rows.map((item) => item.post_id);
+      const visitedPosts = await getVisitedPostsByUserId(selectFromVisitedPost, userId)
+
+      if (visitedPosts.length > 0) {
+        const visitedPostIds = visitedPosts.map((item) => item.post_id);
         visitedFeedIds.push(...visitedPostIds);
       }
 
-      const category = await pool.query(
-        `
-        SELECT feed_category FROM users_feed_category
-        WHERE user_id = $1
-        `,
-        [userId],
-      );
 
-      const feed_category = category.rows[0].feed_category;
+      const category = await getUsersFeedCategory(userId)
 
-      const query = `
-        id <> ALL($2)
-        AND
-        post_category && $3
-      `;
+      const feed_category = category.feed_category;
 
-      let feed = await pool.query(
-        `SELECT * FROM posts
-        WHERE status = $1 AND
-        ${query}
-          ORDER BY created_at DESC
-          LIMIT $4
-          `,
-        ['publish', visitedFeedIds, feed_category, postLimit],
-      );
+
+      let selectFromPosts = '*'
+      let conditionForposts =  `status = $1 AND
+                                  id <> ALL($2) AND
+                                  post_category && $3
+                                `
+      let modifierForPosts = 'ORDER BY created_at DESC LIMIT $4'
+      let valuesForPosts = ['publish', visitedFeedIds, feed_category, postLimit]
+
+      let feed = await getPosts(selectFromPosts, conditionForposts, modifierForPosts, valuesForPosts)
 
       let removeToken = false;
 
-      if (feed.rows.length == 0) {
+      if (feed.length == 0) {
         removeToken = true;
 
-        feed = await pool.query(
-          `
-          SELECT * FROM posts
-          ORDER BY created_at DESC, likes_count DESC
-          LIMIT ${postLimit}
-          `,
-        );
+         conditionForposts = true
+         modifierForPosts = 'ORDER BY created_at DESC, likes_count DESC LIMIT $1'
+         valuesForPosts = [postLimit]
+        feed = await getPosts(selectFromPosts, conditionForposts, modifierForPosts, valuesForPosts)
       }
 
-      const feedIds = feed.rows.map((ele) => ele.id);
+      const feedIds = feed.map((ele) => ele.id);
 
       feedIds.push(...visitedFeedIds);
 
-      const token = TokenGenerator.generateToke(
+      const token = TokenGenerator.generateToken(
         { feedIds: feedIds },
         Number(process.env.VISITED_FEED_TOKEN_EXPIRESIN),
         process.env.VISITED_FEED_TOKEN,
       );
 
-      return { feed: feed.rows, token, removeToken };
+      return { feed: feed, token, removeToken };
     } catch (error) {
       throw error;
     }

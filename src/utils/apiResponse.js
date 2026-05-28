@@ -1,4 +1,4 @@
-// const TokenGenerator = require('./token.generator')
+// const TokenGenerator = require('./tokenGenerator')
 
 function apiResponse(data, message="Success") {
     if(data == null){
