@@ -24,32 +24,56 @@ This backend application serves as the core API for a social media platform, all
 
 ## ⚙️ Getting Started
 
+````md
+## ⚙️ Getting Started
+
 ### 1. Clone the Repository
 
-git clone (https://github.com/ANKITs-Projects/First-Task.git)
+```bash
+git clone https://github.com/ANKITs-Projects/First-Task.git
 cd First-Task
-2. Environment VariablesCreate a .env file in the root directory and copy the keys from .env.example
-3. npm install
-npm run dev
+````
 
----
+### 2. Configure Environment Variables
+
+Create a `.env` file in the root directory and copy the variables from `.env.example`.
+
+### 3. Install Dependencies
+
+```bash
+npm install
+```
+
+### 4. Start the Development Server
+
+```bash
+npm run dev
+```
+
+```
+```
+
 
 ## Project Structure
 
+```txt
+Project Structure
 ├── src/
 │   ├── config/          # DB configuration
-│   ├── controllers/     # HTTP request handlers 
+│   ├── controllers/     # HTTP request handlers
 │   ├── integrations/    # Email integration with nodemailer
 │   ├── middlewares/     # Auth and validation middlewares
-│   ├── repositories/    # Sql querys to communicate with db
+│   ├── repositories/    # SQL queries to communicate with DB
 │   ├── routes/          # Express/API route definitions
-│   ├── services/        # Core business logic 
+│   ├── services/        # Core business logic
 │   ├── utils/           # Helper functions and constants
-│   ├── validators/      # Api validators to validate api request
-│   └── app.js           # Express application setup
-│   └── container.js     # Integrate controllers with services
+│   ├── validators/      # API validators to validate requests
+│   ├── app.js           # Express application setup
+│   └── container.js     # Integrates controllers with services
 ├── .env.example         # Template for environment variables
 ├── README.md            # Project documentation
 ├── server.js            # Entry point of the project
 ├── package-lock.json    # Dependencies and scripts
 └── package.json         # Dependencies and scripts
+```
+
