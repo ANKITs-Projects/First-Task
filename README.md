@@ -24,15 +24,13 @@ This backend application serves as the core API for a social media platform, all
 
 ## ⚙️ Getting Started
 
-````md
-## ⚙️ Getting Started
-
 ### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/ANKITs-Projects/First-Task.git
 cd First-Task
 ````
+
 
 ### 2. Configure Environment Variables
 
@@ -49,10 +47,6 @@ npm install
 ```bash
 npm run dev
 ```
-
-```
-```
-
 
 ## Project Structure
 
