@@ -173,7 +173,8 @@ class UserController {
   getAllMyPost = async (req, res, next) => {
     try {
       const { cursor } = req.query;
-      const { post, newCursor } = await this.userService.getallMypost(req.userid, cursor);
+      const userid = req.userid
+      const { post, newCursor } = await this.userService.getAllPostByUserId(userid, cursor);
 
       const message = post.length === 0 ? "There is no post" : "Post fetched successfully!!"
 

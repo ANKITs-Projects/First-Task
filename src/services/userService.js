@@ -282,36 +282,36 @@ class UserServices {
     }
   }
 
-  async getallMypost(userId, cursor) {
-    try {
-      const postLimit = process.env.POST_LIMIT;
+  // async getallMypost(userId, cursor) {
+  //   try {
+  //     const postLimit = process.env.POST_LIMIT;
 
-      const select = '*'
-      const condition = `${cursor ? 'id < $4 AND' : ''}
-                          user_id = $1 AND
-                          STATUS = $2
-                        `
-      const modifier = 'ORDER BY created_at DESC LIMIT $3'
-      const values = [userId, 'publish', postLimit]
-      if(cursor) values.push(cursor)
+  //     const select = '*'
+  //     const condition = `${cursor ? 'id < $4 AND' : ''}
+  //                         user_id = $1 AND
+  //                         STATUS = $2
+  //                       `
+  //     const modifier = 'ORDER BY created_at DESC LIMIT $3'
+  //     const values = [userId, 'publish', postLimit]
+  //     if(cursor) values.push(cursor)
 
-      const posts = await getPosts(select, condition, modifier, values)
+  //     const posts = await getPosts(select, condition, modifier, values)
 
-      if (posts.length === 0) { 
-      return {
-        post: posts,
-        newCursor: null
-      };
-      }
+  //     if (posts.length === 0) { 
+  //     return {
+  //       post: posts,
+  //       newCursor: null
+  //     };
+  //     }
 
-      return {
-        post: posts,
-        newCursor: posts[posts.length - 1].id
-      };
-    } catch (error) {
-      throw error;
-    }
-  }
+  //     return {
+  //       post: posts,
+  //       newCursor: posts[posts.length - 1].id
+  //     };
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // }
 
   async getDraftPost (userId, cursor) {
     try {
