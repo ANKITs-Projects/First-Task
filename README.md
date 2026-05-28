@@ -67,7 +67,7 @@ Project Structure
 ├── .env.example         # Template for environment variables
 ├── README.md            # Project documentation
 ├── server.js            # Entry point of the project
-├── package-lock.json    # Dependencies and scripts
+├── package-lock.json    # Exact dependency versions lock file
 └── package.json         # Dependencies and scripts
 ```
 
