@@ -23,6 +23,7 @@ async function getPostByPostId(id, select) {
             FROM posts
             WHERE 
             id = $1
+            AND is_delete = false
             `,
             [id]
         )
@@ -34,10 +35,13 @@ async function getPostByPostId(id, select) {
 
 async function getPosts(select, condition, modifier, values) {
     try {
+        condition = condition ? `AND ${condition}` : ''
+
         const post = await pool.query(
             `SELECT ${select}
             FROM posts
             WHERE 
+            is_delete = false
             ${condition}
             ${modifier}
             `,
@@ -51,10 +55,13 @@ async function getPosts(select, condition, modifier, values) {
 
 async function updatePostRepository(fields, condition, values) {
     try {
+        condition = condition ? `AND ${condition}` : ''
         const post = await pool.query(
             `UPDATE posts 
              SET ${fields}
-             WHERE ${condition}
+             WHERE
+             is_delete = false 
+             ${condition}
              RETURNING *`,
             values
         );
@@ -67,12 +74,15 @@ async function updatePostRepository(fields, condition, values) {
 
 async function searchPost(select, joinCondition, queryCondition, modifier, values) {
     try {
+        queryCondition = queryCondition ? `AND ${queryCondition}` : ''
         const post = await pool.query(
             `
             SELECT ${select}
             FROM posts
             ${joinCondition}
-            WHERE ${queryCondition}
+            WHERE 
+            is_delete = false
+            ${queryCondition}
             ${modifier}
             `,
             values

@@ -21,7 +21,7 @@ app.use(cors({
     methods: ['GET', 'POST', 'PATCH', 'DELETE'], 
 }));  
 
-app.use(helmet());  // sets X-Frame-Options, HSTS, CSP, etc. 
+app.use(helmet());   
 
 app.use(uploadFiles({
   maxFileSize: 5 * 1024 * 1024

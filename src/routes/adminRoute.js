@@ -15,5 +15,6 @@ route.get('/getallusers',AuthMiddleware.verifyToken, AuthorizationMiddleware.aut
 
 route.delete('/deleteuser/:userid',AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("admin"), userIdValidation, apiValidator, adminController.deleteUser) 
 
+route.get('/getdeleteduser',AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("admin"), adminController.getDeletedUser)
 
 module.exports = route

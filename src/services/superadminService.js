@@ -1,4 +1,4 @@
-const PasswordHashing = require("../utils/password.hashing");
+const PasswordHashing = require("../utils/passwordHashing");
 const createError = require('../utils/errorObjGenerater');
 const pool = require("../config/pgdb");
 const { getUserByEmail, getUserByUserName, createNewUser } = require("../repositories/usersRepositories");
