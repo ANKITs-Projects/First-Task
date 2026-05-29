@@ -282,7 +282,7 @@ class UserServices {
     }
   }
 
-  // async getallMypost(userId, cursor) {
+  // async getAllMyPosts(userId, cursor) {
   //   try {
   //     const postLimit = process.env.POST_LIMIT;
 

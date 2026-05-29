@@ -1,4 +1,6 @@
 const apiResponce = require("../utils/apiResponse");
+const createError = require("../utils/errorObjGenerater");
+const { validateFileType } = require("../validators/fileTypeValidation");
 
 class AuthController {
   constructor(authService) {
@@ -11,6 +13,13 @@ class AuthController {
       const avatar = req.files?.avatar?.path || null;
       const banner = req.files?.banner?.path || null;
 
+      const fileTypes = [req.files?.avatar?.type, req.files?.banner?.type]
+
+      if(fileTypes.length > 0 && !validateFileType(fileTypes)){
+        throw createError("File type is not allowed", 415)
+      }
+
+      console.log(req.files.avatar.type === "image/png")
       const data = {
         ...req.body,
         avatar,

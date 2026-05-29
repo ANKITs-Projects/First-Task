@@ -1,4 +1,6 @@
-const apiResponce = require('../utils/apiResponse')
+const apiResponce = require('../utils/apiResponse');
+const createError = require('../utils/errorObjGenerater');
+const { validateFileType } = require('../validators/fileTypeValidation');
 
 class UserController {
   
@@ -40,6 +42,11 @@ class UserController {
     try {
       
       const media_urls = req.files ? Object.values(req.files).map(item => item.path) : [];
+      const fileTypes = req.files ? Object.values(req.files).map(item => item.type) : [];
+
+      if(fileTypes.length > 0 && !validateFileType(fileTypes)){
+        throw createError("File type is not allowed", 415)
+      }
 
       const data = {
       ...req.body,
@@ -170,7 +177,7 @@ class UserController {
     }
   }
 
-  getAllMyPost = async (req, res, next) => {
+  getAllMyPosts = async (req, res, next) => {
     try {
       const { cursor } = req.query;
       const userid = req.userid

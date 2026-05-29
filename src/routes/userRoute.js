@@ -27,7 +27,7 @@ route.post('/follow/:followingId', AuthMiddleware.verifyToken, AuthorizationMidd
 route.get('/getfollowers', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.getFollowers)
 route.get('/getfollowing', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.getFollowing)
 
-route.get('/getAllMyPost', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.getAllMyPost)
+route.get('/getallmyposts', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.getAllMyPosts)
 route.get('/getDraftPost', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.getDraftPost)
 route.patch('/updatepost/:postid', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.updatePost)
 route.patch('/publishdraftpost/:postid', AuthMiddleware.verifyToken, AuthorizationMiddleware.authorizeRoles("user"), userController.publishDraftPost)

@@ -30,7 +30,7 @@ class AdminController {
             const data = await this.adminService.deleteUser(userid)
 
             res.status(200).json(
-                apiResponce({data}, "User deletaed successfully")
+                apiResponce({data}, "User deleted successfully")
                 )
         } catch (error) {
             next(error)
