@@ -13,7 +13,7 @@ class AuthController {
       const avatar = req.files?.avatar?.path || null;
       const banner = req.files?.banner?.path || null;
 
-      const fileTypes = req.files?.length ? req.files.map(ele => ele.type) : [] 
+      const fileTypes = req.files ? Object.values(req.files).map(item => item.type) : [];
 
       if(fileTypes.length > 0 && !validateFileType(fileTypes)){
         throw createError("File type is not allowed", 415)
