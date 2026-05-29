@@ -13,13 +13,12 @@ class AuthController {
       const avatar = req.files?.avatar?.path || null;
       const banner = req.files?.banner?.path || null;
 
-      const fileTypes = [req.files?.avatar?.type, req.files?.banner?.type]
+      const fileTypes = req.files?.length ? req.files.map(ele => ele.type) : [] 
 
       if(fileTypes.length > 0 && !validateFileType(fileTypes)){
         throw createError("File type is not allowed", 415)
       }
 
-      console.log(req.files.avatar.type === "image/png")
       const data = {
         ...req.body,
         avatar,
@@ -30,6 +29,7 @@ class AuthController {
 
       res.status(201).json(apiResponce(result, "User signup Successfully"));
     } catch (error) {
+      console.log("auth Controller:- ",error);
       next(error);
     }
   };
